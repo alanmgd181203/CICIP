@@ -12,7 +12,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="CICIP">
+  <meta name="cicip-build" content="20250602-visor-v2">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="assets/imagen-portada.webp">
   <title>Exploración de Proyecto CICIP</title>
@@ -420,11 +420,11 @@
     }
 
     body.visor-render-abierto #contenedor-encabezado {
-      display: none;
+      display: none !important;
     }
 
     #visor-pantalla-completa {
-      z-index: 50;
+      z-index: 5000;
     }
 
     /* Botón pantalla completa */
@@ -1813,7 +1813,11 @@
       const spinnerRender = document.getElementById('spinner-render');
       const mapContainer = document.querySelector('.map-container');
       const etiqueta = document.getElementById('etiqueta-visor-render');
-      const textoEtiqueta = tituloEspacioActual.trim();
+      const encabezado = document.getElementById('contenedor-encabezado');
+      const tituloEl = document.getElementById('titulo-principal');
+      const textoEtiqueta = ((tituloEl && tituloEl.textContent) || tituloEspacioActual || '').trim();
+
+      if (encabezado) encabezado.style.display = 'none';
 
       if (textoEtiqueta) {
         etiqueta.textContent = textoEtiqueta;
@@ -1848,10 +1852,12 @@
     function cerrarRender() {
       const visor = document.getElementById('visor-pantalla-completa');
       const mapContainer = document.querySelector('.map-container');
+      const encabezado = document.getElementById('contenedor-encabezado');
 
       document.getElementById('spinner-render').style.display = 'none';
       document.getElementById('imagen-render-activa').style.opacity = '0';
       document.body.classList.remove('visor-render-abierto');
+      if (encabezado) encabezado.style.display = '';
       if (mapContainer) mapContainer.classList.remove('modo-minimapa');
       document.querySelectorAll('.camara-render').forEach(function (c) {
         c.classList.remove('camara-activa');
@@ -1862,6 +1868,9 @@
         ajustarMapaInteractivo();
       }, 400);
     }
+
+    window.abrirRender = abrirRender;
+    window.cerrarRender = cerrarRender;
 
     function esVistaMovil() {
       return window.matchMedia('only screen and (max-width: 900px)').matches;
@@ -2578,8 +2587,8 @@
     aplicarCandadoHerramientasDev();
   </script>
 
-  <script src="navs.js"></script>
-  <script src="cameras.js"></script>
+  <script src="navs.js?v=20250602"></script>
+  <script src="cameras.js?v=20250602"></script>
   <script>
     iniciarCargaInicial();
   </script>
