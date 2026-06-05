@@ -149,7 +149,7 @@ const navsEdificio1 = `
          style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:30; cursor:pointer;
                 background-color:rgba(120,120,120,0.45); border: 2px solid rgba(200,200,200,0.7);
                 clip-path:polygon(99.44% 7.85%, 71.46% 8.96%, 72.02% 64.94%, 73.71% 66.32%, 86.07% 66.74%, 93.37% 75.19%, 92.81% 95.00%, 99.55% 94.31%);"
-         onclick="saltoLateral('assets/imagen-7.webp', 'Lab de Pruebas', 'nav-cantera-a-pruebas', 'nav-pruebas-a-cantera nav-pruebas-a-morteros nav-pruebas-a-sanitarios nav-pruebas-a-vestibulo-1 nav-pruebas-a-vestibulo-2 camara-pruebas1-49 camara-pruebas1-51')"
+         onclick="saltoLateral('assets/imagen-7.webp', 'Lab de Pruebas', 'nav-cantera-a-pruebas', 'nav-pruebas-a-cantera nav-pruebas-a-morteros nav-pruebas-a-sanitarios nav-pruebas-a-vestibulo-1 nav-pruebas-a-vestibulo-2 camara-pruebas1-49 camara-pruebas1-50 camara-pruebas1-51')"
          onmouseenter="mostrarInfo('Ir a Lab de Pruebas')"
          onmouseleave="ocultarInfo()">
       <div class="etiqueta-navegacion" style="top:59.91%; left:86.05%;">Lab de Pruebas</div>
@@ -242,7 +242,7 @@ const navsEdificio1 = `
          style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:30; cursor:pointer;
                 background-color:rgba(120,120,120,0.45); border: 2px solid rgba(200,200,200,0.7);
                 clip-path:polygon(0.22% 7.30%, 27.64% 5.63%, 26.85% 43.04%, 27.19% 62.17%, 27.64% 63.55%, 35.17% 72.14%, 27.42% 81.56%, 12.25% 81.70%, 10.79% 82.26%, 9.89% 64.11%, 4.61% 56.90%, 0.22% 56.76%);"
-         onclick="saltoLateral('assets/imagen-7.webp', 'Lab de Pruebas', 'nav-morteros-a-pruebas', 'nav-pruebas-a-cantera nav-pruebas-a-morteros nav-pruebas-a-sanitarios nav-pruebas-a-vestibulo-1 nav-pruebas-a-vestibulo-2 camara-pruebas1-49 camara-pruebas1-51')"
+         onclick="saltoLateral('assets/imagen-7.webp', 'Lab de Pruebas', 'nav-morteros-a-pruebas', 'nav-pruebas-a-cantera nav-pruebas-a-morteros nav-pruebas-a-sanitarios nav-pruebas-a-vestibulo-1 nav-pruebas-a-vestibulo-2 camara-pruebas1-49 camara-pruebas1-50 camara-pruebas1-51')"
          onmouseenter="mostrarInfo('Ir a Lab de Pruebas')"
          onmouseleave="ocultarInfo()">
       <div class="etiqueta-navegacion" style="top:56.43%; left:17.49%;">Lab de Pruebas</div>
@@ -410,7 +410,7 @@ const navsEdificio1 = `
          style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:30; cursor:pointer;
                 background-color:rgba(120,120,120,0.45); border: 2px solid rgba(200,200,200,0.7);
                 clip-path:polygon(40.34% -0.05%, 40.00% 7.71%, 53.71% 7.30%, 61.24% 15.61%, 60.90% 41.38%, 79.55% 41.38%, 88.54% 29.74%, 90.67% 28.22%, 82.25% 16.30%, 80.22% 17.27%, 79.55% 14.78%, 79.89% 0.09%);"
-         onclick="saltoLateral('assets/imagen-7.webp', 'Lab de Pruebas', 'nav-sanitarios-a-pruebas', 'nav-pruebas-a-cantera nav-pruebas-a-morteros nav-pruebas-a-sanitarios nav-pruebas-a-vestibulo-1 nav-pruebas-a-vestibulo-2 camara-pruebas1-49 camara-pruebas1-51')"
+         onclick="saltoLateral('assets/imagen-7.webp', 'Lab de Pruebas', 'nav-sanitarios-a-pruebas', 'nav-pruebas-a-cantera nav-pruebas-a-morteros nav-pruebas-a-sanitarios nav-pruebas-a-vestibulo-1 nav-pruebas-a-vestibulo-2 camara-pruebas1-49 camara-pruebas1-50 camara-pruebas1-51')"
          onmouseenter="mostrarInfo('Ir a Lab de Pruebas')"
          onmouseleave="ocultarInfo()">
       <div class="etiqueta-navegacion" style="top:18.31%; left:69.74%;">Lab de Pruebas</div>

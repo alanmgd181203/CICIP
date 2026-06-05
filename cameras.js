@@ -268,8 +268,8 @@ const camerasEdificio1 = `
       </svg>
     </div>
 
-    <!-- Sanitarios Ed.1: Render 50 (Norte) -->
-    <div id="camara-sanitarios1-50" class="camara-render"
+    <!-- Lab de Pruebas Ed.1: Render 50 (Norte) -->
+    <div id="camara-pruebas1-50" class="camara-render"
          style="display:none; position:absolute; top:65.35%; left:56.37%; transform:translate(-50%, -50%) rotate(0deg);"
          onclick="abrirRender('assets/50.webp', this)">
       <svg viewBox="0 0 100 100" width="100%" height="100%" fill="none" stroke="white" stroke-width="4">
