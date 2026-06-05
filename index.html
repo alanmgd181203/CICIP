@@ -12,7 +12,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="cicip-build" content="20250602-minimapa-posicion">
+  <meta name="cicip-build" content="20250602-render-movil-derecha">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="assets/imagen-portada.webp">
   <title>Exploración de Proyecto CICIP</title>
@@ -710,6 +710,29 @@
         left: 16px !important;
         width: min(240px, 52vw) !important;
         transition: none;
+      }
+
+      /* Render a la derecha: no lo tapa el minimapa (izquierda libre) */
+      body.visor-render-abierto {
+        --minimapa-ancho-movil: min(240px, 52vw);
+        --render-pane-inset-left: calc(16px + var(--minimapa-ancho-movil) + 12px);
+      }
+
+      body.visor-render-abierto #imagen-render-activa {
+        position: absolute !important;
+        top: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        left: var(--render-pane-inset-left) !important;
+        width: auto !important;
+        height: 100% !important;
+        object-fit: contain !important;
+        object-position: right center !important;
+      }
+
+      body.visor-render-abierto #spinner-render {
+        left: calc((var(--render-pane-inset-left) + 100vw) / 2) !important;
+        transform: translate(-50%, -50%) !important;
       }
 
       /* Minimapa en vista render (móvil): etiquetas al 50% */
