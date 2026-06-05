@@ -12,7 +12,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="cicip-build" content="20250602-minimapa-stable">
+  <meta name="cicip-build" content="20250602-transicion-capas">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="assets/imagen-portada.webp">
   <title>Exploración de Proyecto CICIP</title>
@@ -414,6 +414,25 @@
     /* Etiquetas de espacio en plantas — ocultas en escritorio */
     .mapa-interactivo > .etiqueta-zona-movil {
       display: none;
+    }
+
+    /* Durante animaciones: ocultar capas interactivas hasta que termine la transición */
+    body.mapa-en-transicion .mapa-interactivo > .etiqueta-zona-movil,
+    body.mapa-en-transicion .mapa-interactivo > .etiqueta-navegacion,
+    body.mapa-en-transicion .mapa-interactivo > [class*="camara-"],
+    body.mapa-en-transicion .mapa-interactivo > [id^="camara-"],
+    body.mapa-en-transicion .mapa-interactivo > .nav-escena-4,
+    body.mapa-en-transicion .mapa-interactivo > .flecha-salto-planta,
+    body.mapa-en-transicion .mapa-interactivo > [id^="nav-"],
+    body.mapa-en-transicion .mapa-interactivo > [class*="botones-escena-"],
+    body.mapa-en-transicion .mapa-interactivo > [class*="botones-exterior-"] {
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+
+    body.mapa-en-transicion .mapa-interactivo > .etiqueta-zona-movil {
+      display: none !important;
     }
 
     .mapa-interactivo.mapa-dual > #mapa-principal,
@@ -1281,6 +1300,16 @@
       loaderEscena.style.display = 'block';
     }
 
+    function iniciarTransicionMapa() {
+      document.body.classList.add('mapa-en-transicion');
+      ocultarEtiquetasMovilEdificios();
+      apagarTodasLasCamaras();
+    }
+
+    function terminarTransicionMapa() {
+      document.body.classList.remove('mapa-en-transicion');
+    }
+
     function retirarCortinaCarga(delay) {
       loaderEscena.style.display = 'none';
       setTimeout(function () {
@@ -1883,7 +1912,7 @@
 
     /* ── Navegación entre escenas ── */
     function irAEscena2() {
-      ocultarEtiquetasMovilEdificios();
+      iniciarTransicionMapa();
       // Fijar punto de fuga hacia el centro del círculo rojo
       mapImg.style.transformOrigin = '64.82% 48.42%';
 
@@ -1912,6 +1941,7 @@
           retirarCortinaCarga(350);
 
           esperarAnimacionImagen('zoom-entrar', function () {
+            terminarTransicionMapa();
             document.querySelectorAll('.botones-escena-2').forEach(function (btn) {
               btn.style.display = 'block';
             });
@@ -2218,6 +2248,10 @@
         etiqueta.style.top = centro.y + '%';
         mapaInteractivo.appendChild(etiqueta);
       });
+      if (document.body.classList.contains('mapa-en-transicion') || !etiquetasMovilVisibles) {
+        ocultarEtiquetasMovilEdificios();
+        return;
+      }
       sincronizarVisibilidadEtiquetasMovil();
     }
 
@@ -2227,7 +2261,7 @@
     }
 
     function irAEscena3(rutaImagen, nuevoTitulo, origenX, origenY, claseZonas) {
-      ocultarEtiquetasMovilEdificios();
+      iniciarTransicionMapa();
       cerrarRender();
       resetearZoomPlanta();
 
@@ -2240,11 +2274,10 @@
       document.getElementById('mapa-principal').style.transformOrigin = origenX + ' ' + origenY;
 
       ocultarInfo();
-      apagarTodasLasCamaras();
       mostrarBtnRegresarPlanta(volverAEscena2);
 
-      // Ocultar botones de escena 2 de inmediato
-      document.querySelectorAll('.botones-escena-2').forEach(function (btn) {
+      // Ocultar botones de escena 2 y 3 de inmediato
+      document.querySelectorAll('.botones-escena-2, .botones-escena-3').forEach(function (btn) {
         btn.style.display = 'none';
       });
 
@@ -2266,6 +2299,7 @@
           retirarCortinaCarga(400);
 
           esperarAnimacionImagen('zoom-entrar-escena3', function () {
+            terminarTransicionMapa();
             mostrarBotonesEscena3();
             mostrarBtnRegresarPlanta(volverAEscena2);
           });
@@ -2274,9 +2308,8 @@
     }
 
     function volverAEscena2() {
-      ocultarEtiquetasMovilEdificios();
+      iniciarTransicionMapa();
       ocultarInfo();
-      apagarTodasLasCamaras();
       resetearZoomPlanta();
       ocultarModoExteriorEdificio();
       // Ocultar botones de escena 3 de inmediato
@@ -2298,6 +2331,7 @@
         retirarCortinaCarga(350);
 
         esperarAnimacionImagen('zoom-entrar', function () {
+          terminarTransicionMapa();
           document.querySelectorAll('.botones-escena-2').forEach(function (btn) {
             btn.style.display = 'block';
           });
@@ -2307,9 +2341,8 @@
     }
 
     function volverAEscena1() {
-      ocultarEtiquetasMovilEdificios();
+      iniciarTransicionMapa();
       ocultarInfo();
-      apagarTodasLasCamaras();
       ocultarBtnRegresarPlanta();
 
       // Ocultar botones de escena 2 de inmediato
@@ -2328,6 +2361,7 @@
         retirarCortinaCarga(350);
 
         esperarAnimacionImagen('zoom-entrar', function () {
+          terminarTransicionMapa();
           document.querySelectorAll('.botones-escena-1').forEach(function (btn) {
             btn.style.display = 'block';
           });
@@ -2356,7 +2390,7 @@
     }
 
     function saltoLateral(rutaImagen, nuevoTitulo, flechaOcultar, flechaMostrar, rutaImagen2) {
-      ocultarEtiquetasMovilEdificios();
+      iniciarTransicionMapa();
       cerrarRender();
       ocultarInfo();
       apagarTodasLasCamaras();
@@ -2378,6 +2412,7 @@
         void mapImg.offsetWidth;
 
         function activarNavsYCamaras() {
+          terminarTransicionMapa();
           mostrarNavs(flechaMostrar);
           mostrarBtnRegresarPlanta(volverAEscena3);
           activarCargaReactiva(imagenEscenaActual, {
@@ -2402,9 +2437,8 @@
     /* ── Ir a Escena 4 (espacio interior) ── */
 
     function irAEscena4(rutaImagen, nuevoTitulo, origenX, origenY, rutaImagen2, escalaFija, flechaMostrar) {
-      ocultarEtiquetasMovilEdificios();
+      iniciarTransicionMapa();
       ocultarInfo();
-      apagarTodasLasCamaras();
       mostrarBtnRegresarPlanta(volverAEscena3);
       ocultarModoExteriorEdificio();
       document.querySelectorAll('.nav-escena-4, .flecha-salto-planta').forEach(function (el) {
@@ -2437,6 +2471,7 @@
           void mapImg.offsetWidth;
 
           function activarEscena4() {
+            terminarTransicionMapa();
             if (herramientasCoordsActivas()) {
               document.querySelectorAll('.botones-escena-4').forEach(function (btn) {
                 btn.style.display = 'block';
@@ -2467,9 +2502,8 @@
 
     /* ── Volver a Escena 3 (planta del edificio) ── */
     function volverAEscena3() {
-      ocultarEtiquetasMovilEdificios();
+      iniciarTransicionMapa();
       ocultarInfo();
-      apagarTodasLasCamaras();
 
       // Ocultar todas las flechas y polígonos de navegación lateral
       document.querySelectorAll('.nav-escena-4').forEach(function (f) {
@@ -2502,6 +2536,7 @@
         retirarCortinaCarga(350);
 
         esperarAnimacionImagen('zoom-entrar', function () {
+          terminarTransicionMapa();
           mostrarBotonesEscena3();
           mostrarBtnRegresarPlanta(volverAEscena2);
         });
