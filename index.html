@@ -12,7 +12,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="cicip-build" content="20250602-visor-v3">
+  <meta name="cicip-build" content="20250602-minimapa-movil">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="assets/imagen-portada.webp">
   <title>Exploración de Proyecto CICIP</title>
@@ -613,6 +613,31 @@
         width: min(240px, 52vw) !important;
       }
 
+      /* Minimapa en vista render: compacto (~⅓) y expandible al tocar */
+      body.visor-render-abierto .map-container.modo-minimapa.minimapa-compacto {
+        width: min(84px, 18vw) !important;
+        bottom: 12px;
+        left: 12px;
+        border-width: 2px;
+        border-radius: 8px;
+        cursor: pointer;
+        overflow: hidden;
+      }
+
+      body.visor-render-abierto .map-container.modo-minimapa.minimapa-expandido {
+        width: min(280px, 64vw) !important;
+        bottom: 16px;
+        left: 16px;
+      }
+
+      body.visor-render-abierto .map-container.modo-minimapa.minimapa-compacto::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: 10;
+        cursor: pointer;
+      }
+
       #etiqueta-visor-render {
         bottom: 16px;
         right: 16px;
@@ -829,7 +854,7 @@
          style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:30; pointer-events:auto; cursor:pointer; clip-path:polygon(47.46% 35.02%, 47.46% 42.79%, 42.43% 42.72%, 48.83% 50.61%, 53.91% 50.61%, 53.91% 46.36%, 56.97% 42.72%, 52.33% 42.85%, 52.33% 37.05%, 50.58% 35.02%)"
          onmouseenter="mostrarInfo('Sanitarios')"
          onmouseleave="ocultarInfo()"
-         onclick="irAEscena4('assets/imagen-12.webp', 'Sanitarios', '51%', '43%', null, null, 'nav-sanitarios-a-cantera nav-sanitarios-a-pruebas nav-sanitarios-a-morteros nav-sanitarios-a-conservprev nav-sanitarios-a-principal nav-sanitarios-a-vestibulo camara-sanitarios1-50 camara-sanitarios1-53')"></div>
+         onclick="irAEscena4('assets/imagen-12.webp', 'Sanitarios', '51%', '43%', null, null, 'nav-sanitarios-a-cantera nav-sanitarios-a-pruebas nav-sanitarios-a-morteros nav-sanitarios-a-conservprev nav-sanitarios-a-principal nav-sanitarios-a-vestibulo camara-sanitarios1-53')"></div>
 
     <!-- Edificio 1 — Lab Morteros, z-index 30 -->
     <div class="botones-escena-3 zonas-edificio-1 zona-interactiva"
@@ -1812,6 +1837,75 @@
     }
 
     /* ── Visor de renders estilo Street View ── */
+    let minimapaRenderTimer = null;
+
+    function colapsarMinimapaRender() {
+      if (!esVistaMovil()) return;
+      var mapContainer = document.querySelector('.map-container.modo-minimapa');
+      if (!mapContainer) return;
+      mapContainer.classList.remove('minimapa-expandido');
+      mapContainer.classList.add('minimapa-compacto');
+    }
+
+    function expandirMinimapaRender() {
+      if (!esVistaMovil()) return;
+      var mapContainer = document.querySelector('.map-container.modo-minimapa');
+      if (!mapContainer) return;
+      mapContainer.classList.remove('minimapa-compacto');
+      mapContainer.classList.add('minimapa-expandido');
+      reiniciarTimerMinimapaRender();
+    }
+
+    function reiniciarTimerMinimapaRender() {
+      clearTimeout(minimapaRenderTimer);
+      if (!esVistaMovil()) return;
+      var mapContainer = document.querySelector('.map-container.modo-minimapa');
+      if (!mapContainer || !mapContainer.classList.contains('minimapa-expandido')) return;
+      minimapaRenderTimer = setTimeout(colapsarMinimapaRender, 4000);
+    }
+
+    function limpiarMinimapaRenderMovil() {
+      clearTimeout(minimapaRenderTimer);
+      minimapaRenderTimer = null;
+      var mapContainer = document.querySelector('.map-container');
+      if (!mapContainer) return;
+      mapContainer.classList.remove('minimapa-compacto', 'minimapa-expandido');
+      if (mapContainer._minimapaTapHandler) {
+        mapContainer.removeEventListener('click', mapContainer._minimapaTapHandler, true);
+        mapContainer._minimapaTapHandler = null;
+      }
+      if (mapContainer._minimapaInteractHandler) {
+        mapContainer.removeEventListener('touchstart', mapContainer._minimapaInteractHandler);
+        mapContainer.removeEventListener('click', mapContainer._minimapaInteractHandler);
+        mapContainer._minimapaInteractHandler = null;
+      }
+    }
+
+    function prepararMinimapaRenderMovil() {
+      limpiarMinimapaRenderMovil();
+      if (!esVistaMovil()) return;
+      var mapContainer = document.querySelector('.map-container.modo-minimapa');
+      if (!mapContainer) return;
+
+      mapContainer.classList.add('minimapa-compacto');
+
+      mapContainer._minimapaTapHandler = function (e) {
+        if (!mapContainer.classList.contains('minimapa-compacto')) return;
+        e.preventDefault();
+        e.stopPropagation();
+        expandirMinimapaRender();
+      };
+      mapContainer.addEventListener('click', mapContainer._minimapaTapHandler, true);
+
+      mapContainer._minimapaInteractHandler = function () {
+        if (mapContainer.classList.contains('minimapa-expandido')) {
+          reiniciarTimerMinimapaRender();
+        }
+      };
+      mapContainer.addEventListener('touchstart', mapContainer._minimapaInteractHandler, { passive: true });
+      mapContainer.addEventListener('click', mapContainer._minimapaInteractHandler);
+    }
+
     function abrirRender(rutaImagen, elementoCamara) {
       const visor = document.getElementById('visor-pantalla-completa');
       const imagenActiva = document.getElementById('imagen-render-activa');
@@ -1848,9 +1942,16 @@
         imagenActiva.onload();
       }
 
+      var renderYaAbierto = visor.style.display === 'block';
+
       visor.style.display = 'block';
       document.body.classList.add('visor-render-abierto');
       if (mapContainer) mapContainer.classList.add('modo-minimapa');
+      if (renderYaAbierto && esVistaMovil() && mapContainer && mapContainer.classList.contains('minimapa-expandido')) {
+        reiniciarTimerMinimapaRender();
+      } else {
+        prepararMinimapaRenderMovil();
+      }
       ajustarMapaInteractivo();
     }
 
@@ -1859,6 +1960,7 @@
       const mapContainer = document.querySelector('.map-container');
       const encabezado = document.getElementById('contenedor-encabezado');
 
+      limpiarMinimapaRenderMovil();
       document.getElementById('spinner-render').style.display = 'none';
       document.getElementById('imagen-render-activa').style.opacity = '0';
       document.body.classList.remove('visor-render-abierto');
