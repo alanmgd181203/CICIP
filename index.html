@@ -108,13 +108,6 @@
       z-index: 251;
     }
 
-    /* Ocultos en escritorio; solo móvil ≤900px */
-    #btn-menu-movil,
-    #fondo-menu-movil,
-    #hotspot-tooltip-movil {
-      display: none;
-    }
-
     #btn-regresar-planta:hover {
       background: rgba(255, 255, 255, 0.2);
       transform: scale(1.1);
@@ -395,156 +388,34 @@
       z-index: 65;
     }
 
-    /* Aviso de rotación — solo celular en vertical (activado por JS) */
-    #bloqueo-rotacion {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background-color: #0d0d0d;
-      color: white;
-      z-index: 99998;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      text-align: center;
-      padding: clamp(20px, 6vw, 40px);
-      gap: 12px;
-    }
-
-    #bloqueo-rotacion.activo {
-      display: flex;
-    }
-
-    #bloqueo-rotacion svg {
-      width: clamp(64px, 18vw, 88px);
-      height: clamp(64px, 18vw, 88px);
-      animation: rotarCelular 2s infinite ease-in-out;
-    }
-
-    #bloqueo-rotacion h2 {
-      font-size: clamp(1.1rem, 4.5vw, 1.5rem);
-      font-weight: 500;
-      letter-spacing: 0.06em;
-      margin: 8px 0 0;
-    }
-
-    #bloqueo-rotacion p {
-      font-size: clamp(0.85rem, 3.5vw, 1rem);
-      font-weight: 300;
-      color: rgba(255, 255, 255, 0.72);
-      max-width: 28ch;
-      line-height: 1.5;
-    }
-
-    @keyframes rotarCelular {
-      0% { transform: rotate(0deg); }
-      50% { transform: rotate(-90deg); }
-      100% { transform: rotate(-90deg); }
-    }
-
-    /* ── Mapa flotante (overlay universal) ── */
-    #fondo-mapa-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.62);
-      z-index: 320;
-      backdrop-filter: blur(4px);
-    }
-
-    body.mapa-desplegado #fondo-mapa-overlay {
-      display: block;
-    }
-
-    #mapa-overlay-panel {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%) scale(0.96);
-      width: min(94vw, 1200px);
-      max-height: 88vh;
-      z-index: 340;
-      opacity: 0;
-      visibility: hidden;
-      pointer-events: none;
-      transition: opacity 0.35s ease, transform 0.35s ease, visibility 0.35s;
-      background: rgba(14, 14, 14, 0.97);
-      border: 1.5px solid rgba(255, 255, 255, 0.18);
-      border-radius: clamp(10px, 2vw, 16px);
-      padding: clamp(10px, 2.5vw, 18px);
-      overflow: auto;
-      box-shadow: 0 20px 56px rgba(0, 0, 0, 0.75);
-    }
-
-    body.mapa-desplegado #mapa-overlay-panel {
-      opacity: 1;
-      visibility: visible;
-      pointer-events: auto;
-      transform: translate(-50%, -50%) scale(1);
-    }
-
-    #btn-cerrar-mapa-overlay {
-      position: absolute;
-      top: clamp(8px, 2vw, 12px);
-      right: clamp(8px, 2vw, 12px);
-      z-index: 10;
-      width: clamp(32px, 8vw, 40px);
-      height: clamp(32px, 8vw, 40px);
-      border: 1px solid rgba(255, 255, 255, 0.35);
-      border-radius: 50%;
-      background: rgba(0, 0, 0, 0.55);
-      color: white;
-      font-size: clamp(14px, 3.5vw, 18px);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background 0.2s ease;
-    }
-
-    #btn-cerrar-mapa-overlay:hover {
-      background: rgba(255, 255, 255, 0.15);
-    }
-
-    #mapa-overlay-panel .mapa-interactivo > #mapa-principal,
-    #mapa-overlay-panel .mapa-interactivo > #mapa-secundario {
-      width: 100%;
-      height: auto;
-      max-height: calc(88vh - 56px);
-      object-fit: contain;
-    }
-
     .mapa-interactivo.mapa-dual > #mapa-principal,
     .mapa-interactivo.mapa-dual > #mapa-secundario {
       max-height: calc(44vh - 28px);
     }
 
-    #btn-flotante-plano {
-      display: flex;
-      position: fixed;
+    /* Minimapa: solo visible con render abierto */
+    body.visor-render-abierto .map-container {
+      display: none;
+    }
+
+    body.visor-render-abierto .map-container.modo-minimapa {
+      display: block;
+      position: fixed !important;
       bottom: 20px;
-      right: 20px;
-      z-index: 360;
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      border: 1.5px solid rgba(255, 255, 255, 0.55);
-      background: rgba(0, 0, 0, 0.5);
-      color: white;
-      font-size: clamp(18px, 4.5vw, 24px);
-      line-height: 1;
-      cursor: pointer;
-      align-items: center;
-      justify-content: center;
-      backdrop-filter: blur(8px);
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
-      transition: background 0.25s ease, transform 0.2s ease;
+      left: 20px;
+      width: 300px !important;
+      height: auto;
+      z-index: 100;
+      border: 3px solid rgba(255, 255, 255, 0.8);
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+      transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+      background: #1a1a1a;
       pointer-events: auto;
     }
 
-    #btn-flotante-plano:hover {
-      background: rgba(30, 30, 30, 0.75);
-      transform: scale(1.05);
+    #visor-pantalla-completa {
+      z-index: 50;
     }
 
     /* Botón pantalla completa */
@@ -588,8 +459,7 @@
       cursor: default;
     }
 
-    body.carga-inicial-bloqueada #btn-pantalla-completa,
-    body.carga-inicial-bloqueada #btn-flotante-plano {
+    body.carga-inicial-bloqueada #btn-pantalla-completa {
       display: none;
     }
 
@@ -630,15 +500,11 @@
       background: transparent;
     }
 
-    #visor-pantalla-completa {
-      z-index: 300;
-    }
-
     body.carga-inicial-bloqueada {
       overflow: hidden;
     }
 
-    body.carga-inicial-bloqueada #mapa-overlay-panel,
+    body.carga-inicial-bloqueada .map-container,
     body.carga-inicial-bloqueada #contenedor-encabezado,
     body.carga-inicial-bloqueada #panel-info {
       pointer-events: none;
@@ -691,220 +557,8 @@
       animation: girar 1s linear infinite;
     }
 
-    /* ══════════════════════════════════════════
-       MÓVIL ≤900px — aislado; escritorio sin cambios
-       ══════════════════════════════════════════ */
-    @media only screen and (max-width: 900px) {
-      body {
-        overflow: hidden;
-        height: 100dvh;
-        max-height: 100dvh;
-      }
-
-      body.carga-inicial-bloqueada {
-        overflow: hidden;
-      }
-
-      /* Header lateral + hamburguesa */
-      #btn-menu-movil {
-        display: flex;
-        position: fixed;
-        top: 10px;
-        left: 10px;
-        z-index: 400;
-        width: 44px;
-        height: 44px;
-        border: 2px solid rgba(255, 255, 255, 0.65);
-        border-radius: 10px;
-        background: rgba(0, 0, 0, 0.72);
-        color: white;
-        font-size: 20px;
-        cursor: pointer;
-        align-items: center;
-        justify-content: center;
-        backdrop-filter: blur(6px);
-        pointer-events: auto;
-      }
-
-      #fondo-menu-movil {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.45);
-        z-index: 380;
-      }
-
-      body.menu-abierto #fondo-menu-movil {
-        display: block;
-      }
-
-      #contenedor-encabezado {
-        position: fixed;
-        top: 0;
-        left: 0;
-        bottom: 0;
-        width: min(280px, 82vw);
-        flex-direction: column;
-        align-items: flex-start;
-        justify-content: flex-start;
-        padding: 58px 16px 16px;
-        margin: 0;
-        gap: 12px;
-        transform: translateX(-100%);
-        transition: transform 0.3s ease;
-        background: rgba(8, 8, 8, 0.96);
-        border-right: 1px solid rgba(255, 255, 255, 0.15);
-        box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
-        pointer-events: auto;
-        z-index: 390;
-      }
-
-      #contenedor-encabezado.menu-abierto {
-        transform: translateX(0);
-      }
-
-      #contenedor-encabezado h1 {
-        font-size: 14px;
-        margin: 0;
-        text-align: left;
-        line-height: 1.35;
-        width: 100%;
-        font-weight: 400;
-        letter-spacing: 0.06em;
-      }
-
-      #btn-regresar-planta {
-        position: fixed;
-        top: 10px;
-        left: 62px;
-        width: 44px;
-        height: 44px;
-        font-size: 16px;
-        z-index: 399;
-      }
-
-      #btn-editor {
-        top: 10px !important;
-        right: 10px !important;
-        left: auto !important;
-      }
-
-      /* Plano: solo overlay 80%, nunca encimado al render */
-      #fondo-mapa-overlay {
-        background: rgba(0, 0, 0, 0.55);
-      }
-
-      body.render-activo.mapa-desplegado #fondo-mapa-overlay {
-        background: rgba(0, 0, 0, 0.28);
-        backdrop-filter: blur(2px);
-      }
-
-      #mapa-overlay-panel {
-        width: 80vw;
-        max-width: 80vw;
-        max-height: 80vh;
-        padding: 10px;
-        overflow: auto;
-      }
-
-      #mapa-overlay-panel .mapa-interactivo > #mapa-principal,
-      #mapa-overlay-panel .mapa-interactivo > #mapa-secundario {
-        width: 100%;
-        height: auto;
-        max-height: calc(80vh - 48px);
-        object-fit: contain;
-      }
-
-      .mapa-interactivo.mapa-dual > #mapa-principal,
-      .mapa-interactivo.mapa-dual > #mapa-secundario {
-        max-height: calc(40vh - 28px);
-      }
-
-      /* Render y plantas: contenido completo sin scroll */
-      body.render-activo #visor-pantalla-completa {
-        display: flex !important;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-      }
-
-      #imagen-render-activa {
-        width: 100% !important;
-        height: auto !important;
-        max-height: 85vh !important;
-        object-fit: contain !important;
-      }
-
-      #etiqueta-visor-render {
-        font-size: 11px;
-        padding: 6px 12px;
-        bottom: 16px;
-        right: 16px;
-        border-right-width: 2px;
-      }
-
-      /* Hotspots discretos en plantas de edificios */
-      .hotspot-zona-movil {
-        position: absolute;
-        transform: translate(-50%, -50%);
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.92);
-        border: 2px solid rgba(0, 180, 160, 0.85);
-        box-shadow: 0 0 0 3px rgba(0, 180, 160, 0.25), 0 2px 6px rgba(0, 0, 0, 0.55);
-        z-index: 36;
-        pointer-events: auto;
-        cursor: pointer;
-      }
-
-      .hotspot-zona-movil.activo {
-        background: rgba(0, 220, 190, 1);
-        transform: translate(-50%, -50%) scale(1.2);
-      }
-
-      #hotspot-tooltip-movil {
-        display: none;
-        position: fixed;
-        z-index: 420;
-        max-width: min(70vw, 220px);
-        padding: 8px 12px;
-        background: rgba(12, 12, 12, 0.94);
-        border: 1px solid rgba(255, 255, 255, 0.28);
-        border-radius: 8px;
-        color: #f2f2f2;
-        font-size: 11px;
-        font-weight: 600;
-        letter-spacing: 0.05em;
-        text-transform: uppercase;
-        text-align: center;
-        line-height: 1.3;
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
-        pointer-events: none;
-      }
-
-      #hotspot-tooltip-movil.visible {
-        display: block;
-      }
-
-      .camara-render,
-      .camara-exterior,
-      .camara-exterior-edificios,
-      .camara-exterior-edificio1,
-      .camara-exterior-edificio2,
-      .camara-exterior-edificio3 {
-        width: 48px !important;
-        height: 48px !important;
-        min-width: 48px;
-        min-height: 48px;
-      }
-
-      .camara-render[id^="camara-vestibulo3-"],
-      .camara-render[id^="camara-vestibulo1-"] {
-        width: 40px !important;
-        height: 40px !important;
-      }
-
+    /* Pantallas táctiles: sin hovers fantasma */
+    @media (hover: none) {
       .zona-interactiva:hover,
       .nav-escena-4:hover,
       .camara-render:hover {
@@ -913,26 +567,36 @@
         transform: none !important;
         filter: none !important;
       }
+    }
 
-      #btn-flotante-plano {
-        bottom: 18px;
-        right: 18px;
-        width: 48px;
-        height: 48px;
+    /* Móvil: cámaras y botones escalan con la imagen (misma UI que laptop) */
+    @media only screen and (max-width: 900px) {
+      .camara-render,
+      .camara-exterior,
+      .camara-exterior-edificios,
+      .camara-exterior-edificio1,
+      .camara-exterior-edificio2,
+      .camara-exterior-edificio3 {
+        width: 5.33% !important;
+        height: auto !important;
+        aspect-ratio: 1;
+        min-width: 28px;
+        max-width: 64px;
       }
 
-      #btn-pantalla-completa {
-        bottom: 74px;
-        right: 18px;
-        width: 40px;
-        height: 40px;
+      .camara-render[id^="camara-vestibulo3-"],
+      .camara-render[id^="camara-vestibulo1-"] {
+        width: 2.67% !important;
+        min-width: 16px;
+        max-width: 32px;
       }
 
-      #panel-info {
-        bottom: 16px;
-        right: 16px;
-        font-size: 13px;
-        padding: 8px 14px;
+      .nav-escena-4 {
+        font-size: clamp(9px, 2.2vw, 12px) !important;
+      }
+
+      .map-container.modo-minimapa {
+        width: min(240px, 52vw) !important;
       }
     }
   </style>
@@ -948,15 +612,6 @@
 
   <button type="button" id="btn-pantalla-completa" aria-label="Pantalla completa" title="Pantalla completa">⛶</button>
 
-  <div id="bloqueo-rotacion" aria-live="polite">
-    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
-      <line x1="12" y1="18" x2="12.01" y2="18"></line>
-    </svg>
-    <h2>Gira tu dispositivo</h2>
-    <p>Para explorar las plantas con comodidad, usa el celular en horizontal.</p>
-  </div>
-
   <div id="visor-pantalla-completa" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #000;">
     <img id="imagen-render-activa" style="width: 100%; height: 100%; object-fit: contain; opacity: 0; transition: opacity 0.4s ease;" src="" alt="Render 3D">
 
@@ -970,17 +625,9 @@
     <button id="btn-cerrar-visor" onclick="navegarAtras()" style="position: absolute; top: 20px; right: 30px; font-size: 30px; background: rgba(0,0,0,0.5); color: white; border: none; border-radius: 50%; width: 50px; height: 50px; cursor: pointer; z-index: 2;">✖</button>
   </div>
 
-  <button id="btn-flotante-plano" type="button" onclick="toggleMapaOverlay()" aria-label="Ver mapa" title="Ver mapa">🗺</button>
-
-  <button id="btn-menu-movil" type="button" onclick="toggleMenuMovil()" aria-label="Abrir menú" title="Menú">☰</button>
-  <div id="fondo-menu-movil" onclick="cerrarMenuMovil()"></div>
-  <div id="hotspot-tooltip-movil" aria-live="polite"></div>
-
   <div id="overlay-oscuro">
     <div id="loader-escena"></div>
   </div>
-
-  <div id="fondo-mapa-overlay" onclick="cerrarMapaOverlay()"></div>
 
   <div id="contenedor-encabezado">
     <button id="btn-regresar-planta"
@@ -992,8 +639,6 @@
     <h1 id="titulo-principal">Exploración de Proyecto CICIP</h1>
   </div>
 
-  <div id="mapa-overlay-panel">
-    <button type="button" id="btn-cerrar-mapa-overlay" onclick="cerrarMapaOverlay()" aria-label="Cerrar mapa" title="Cerrar mapa">✕</button>
   <div class="map-container">
     <div id="mapa-interactivo" class="mapa-interactivo">
     <img id="mapa-principal" src="assets/Planta Conjunto.webp" alt="Planta Conjunto CICIP" />
@@ -1348,8 +993,6 @@
          onclick="clicExteriorEdificio(3, event)"></div>
     </div>
   </div>
-  </div>
-
 
   <div id="panel-info"></div>
 
@@ -1494,7 +1137,9 @@
         if (gen !== generacionCarga) return Promise.resolve();
         mapImg.src = src;
         imagenEscenaActual = src;
-        return esperarImagenElemento(mapImg);
+        return esperarImagenElemento(mapImg).then(function () {
+          ajustarMapaInteractivo();
+        });
       });
     }
 
@@ -1503,6 +1148,7 @@
         mapaSecundario.style.display = 'none';
         mapaSecundario.src = '';
         mapaInteractivo.classList.remove('mapa-dual');
+        ajustarMapaInteractivo();
         return Promise.resolve();
       }
       var gen = generacionCarga;
@@ -1511,8 +1157,16 @@
         mapaSecundario.src = src;
         mapaSecundario.style.display = 'block';
         mapaInteractivo.classList.add('mapa-dual');
-        return esperarImagenElemento(mapaSecundario);
+        return esperarImagenElemento(mapaSecundario).then(function () {
+          ajustarMapaInteractivo();
+        });
       });
+    }
+
+    function ajustarMapaInteractivo() {
+      if (!mapaInteractivo) return;
+      mapaInteractivo.style.width = '';
+      mapaInteractivo.style.height = '';
     }
 
     function extraerRutasOnclick(onclick) {
@@ -1676,9 +1330,7 @@
       cargaInicialActiva = false;
       document.body.classList.remove('carga-inicial-bloqueada');
       ocultarSplash();
-      if (esVistaMovil()) {
-        abrirMapaOverlay();
-      }
+      ajustarMapaInteractivo();
     }
 
     function iniciarCargaInicial() {
@@ -1717,10 +1369,6 @@
       var visor = document.getElementById('visor-pantalla-completa');
       if (visor && visor.style.display === 'block') {
         cerrarRender();
-        return;
-      }
-      if (document.body.classList.contains('mapa-desplegado')) {
-        cerrarMapaOverlay();
         return;
       }
       ejecutarRegresoPlanta();
@@ -2139,151 +1787,27 @@
       }
 
       visor.style.display = 'block';
-      document.body.classList.add('render-activo');
-      cerrarMapaOverlay();
+      document.body.classList.add('visor-render-abierto');
+      if (mapContainer) mapContainer.classList.add('modo-minimapa');
+      ajustarMapaInteractivo();
     }
 
     function cerrarRender() {
       const visor = document.getElementById('visor-pantalla-completa');
+      const mapContainer = document.querySelector('.map-container');
 
       document.getElementById('spinner-render').style.display = 'none';
       document.getElementById('imagen-render-activa').style.opacity = '0';
-      document.body.classList.remove('render-activo');
-      cerrarMapaOverlay();
+      document.body.classList.remove('visor-render-abierto');
+      if (mapContainer) mapContainer.classList.remove('modo-minimapa');
       document.querySelectorAll('.camara-render').forEach(function (c) {
         c.classList.remove('camara-activa');
       });
 
-      setTimeout(function () { visor.style.display = 'none'; }, 400);
-    }
-
-    function abrirMapaOverlay() {
-      document.body.classList.add('mapa-desplegado');
-    }
-
-    function cerrarMapaOverlay() {
-      document.body.classList.remove('mapa-desplegado');
-      ocultarHotspotTooltip();
-    }
-
-    function toggleMapaOverlay() {
-      document.body.classList.toggle('mapa-desplegado');
-      if (!document.body.classList.contains('mapa-desplegado')) {
-        ocultarHotspotTooltip();
-      }
-    }
-
-    function esVistaMovil() {
-      return window.matchMedia('only screen and (max-width: 900px)').matches;
-    }
-
-    function toggleMenuMovil() {
-      if (!esVistaMovil()) return;
-      var panel = document.getElementById('contenedor-encabezado');
-      var abierto = panel.classList.toggle('menu-abierto');
-      document.body.classList.toggle('menu-abierto', abierto);
-      document.getElementById('btn-menu-movil').textContent = abierto ? '✕' : '☰';
-    }
-
-    function cerrarMenuMovil() {
-      if (!esVistaMovil()) return;
-      document.getElementById('contenedor-encabezado').classList.remove('menu-abierto');
-      document.body.classList.remove('menu-abierto');
-      document.getElementById('btn-menu-movil').textContent = '☰';
-    }
-
-    function centroZonaEdificio(zona) {
-      var style = zona.getAttribute('style') || '';
-      var ellipse = style.match(/clip-path:ellipse\([^)]+\s+at\s+([\d.]+)%\s+([\d.]+)%\)/);
-      if (ellipse) {
-        return { x: parseFloat(ellipse[1]), y: parseFloat(ellipse[2]) };
-      }
-      var polygon = style.match(/clip-path:polygon\(([^)]+)\)/);
-      if (polygon) {
-        var puntos = polygon[1].split(',').map(function (segmento) {
-          var partes = segmento.trim().split(/\s+/);
-          return { x: parseFloat(partes[0]), y: parseFloat(partes[1]) };
-        });
-        var sumX = 0;
-        var sumY = 0;
-        puntos.forEach(function (p) {
-          sumX += p.x;
-          sumY += p.y;
-        });
-        return { x: sumX / puntos.length, y: sumY / puntos.length };
-      }
-      var onclick = zona.getAttribute('onclick') || '';
-      var coords = onclick.match(/irAEscena4\([^,]+,\s*'[^']*',\s*'([^']+)',\s*'([^']+)'/);
-      if (coords) {
-        return { x: parseFloat(coords[1]), y: parseFloat(coords[2]) };
-      }
-      return { x: 50, y: 50 };
-    }
-
-    function nombreZonaEdificio(zona) {
-      var enter = zona.getAttribute('onmouseenter') || '';
-      var coincidencia = enter.match(/mostrarInfo\('([^']+)'\)/);
-      return coincidencia ? coincidencia[1] : '';
-    }
-
-    var hotspotActivo = null;
-
-    function ocultarHotspotTooltip() {
-      var tooltip = document.getElementById('hotspot-tooltip-movil');
-      if (tooltip) {
-        tooltip.classList.remove('visible');
-        tooltip.textContent = '';
-      }
-      if (hotspotActivo) {
-        hotspotActivo.classList.remove('activo');
-        hotspotActivo = null;
-      }
-    }
-
-    function mostrarHotspotTooltip(hotspot, nombre) {
-      if (!esVistaMovil()) return;
-      var tooltip = document.getElementById('hotspot-tooltip-movil');
-      if (!tooltip) return;
-      if (hotspotActivo && hotspotActivo !== hotspot) {
-        hotspotActivo.classList.remove('activo');
-      }
-      hotspotActivo = hotspot;
-      hotspot.classList.add('activo');
-      tooltip.textContent = nombre;
-      var rect = hotspot.getBoundingClientRect();
-      tooltip.style.left = Math.min(rect.left, window.innerWidth - 230) + 'px';
-      tooltip.style.top = (rect.top - 8) + 'px';
-      tooltip.style.transform = 'translateY(-100%)';
-      tooltip.classList.add('visible');
-    }
-
-    function instalarHotspotsMovilEdificios() {
-      document.querySelectorAll('.botones-escena-3.zona-interactiva[class*="zonas-edificio-"]').forEach(function (zona) {
-        if (zona.querySelector('.hotspot-zona-movil')) return;
-        var nombre = nombreZonaEdificio(zona);
-        if (!nombre) return;
-        var centro = centroZonaEdificio(zona);
-        var hotspot = document.createElement('button');
-        hotspot.type = 'button';
-        hotspot.className = 'hotspot-zona-movil';
-        hotspot.setAttribute('aria-label', nombre);
-        hotspot.style.left = centro.x + '%';
-        hotspot.style.top = centro.y + '%';
-        hotspot.addEventListener('click', function (e) {
-          e.stopPropagation();
-          if (!esVistaMovil()) return;
-          mostrarHotspotTooltip(hotspot, nombre);
-        });
-        zona.appendChild(hotspot);
-      });
-    }
-
-    function actualizarModoDispositivo() {
-      if (!esVistaMovil()) {
-        cerrarMapaOverlay();
-        cerrarMenuMovil();
-        ocultarHotspotTooltip();
-      }
+      setTimeout(function () {
+        visor.style.display = 'none';
+        ajustarMapaInteractivo();
+      }, 400);
     }
 
     function irAEscena3(rutaImagen, nuevoTitulo, origenX, origenY, claseZonas) {
@@ -2568,33 +2092,9 @@
       }
     });
 
-    document.addEventListener('click', function (e) {
-      if (!esVistaMovil()) return;
-      if (!e.target.closest('.hotspot-zona-movil, #hotspot-tooltip-movil')) {
-        ocultarHotspotTooltip();
-      }
-    });
-
-    function requiereRotacionCelular() {
-      if (!esVistaMovil()) return false;
-      return window.matchMedia('(orientation: portrait)').matches;
-    }
-
-    function actualizarBloqueoRotacion() {
-      var bloqueo = document.getElementById('bloqueo-rotacion');
-      if (!bloqueo) return;
-      bloqueo.classList.toggle('activo', requiereRotacionCelular());
-    }
-
-    function actualizarInterfazDispositivo() {
-      actualizarModoDispositivo();
-      actualizarBloqueoRotacion();
-    }
-
-    instalarHotspotsMovilEdificios();
-    actualizarInterfazDispositivo();
-    window.addEventListener('resize', actualizarInterfazDispositivo);
-    window.addEventListener('orientationchange', actualizarInterfazDispositivo);
+    window.addEventListener('resize', ajustarMapaInteractivo);
+    window.addEventListener('orientationchange', ajustarMapaInteractivo);
+    mapImg.addEventListener('load', ajustarMapaInteractivo);
   </script>
 
   <!-- ══════════════════════════════════════════
