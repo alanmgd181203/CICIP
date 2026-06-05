@@ -12,7 +12,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="cicip-build" content="20250602-visor-v2">
+  <meta name="cicip-build" content="20250602-visor-v3">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="assets/imagen-portada.webp">
   <title>Exploración de Proyecto CICIP</title>
@@ -410,7 +410,7 @@
       left: 20px;
       width: 300px !important;
       height: auto;
-      z-index: 100;
+      z-index: 6000;
       border: 3px solid rgba(255, 255, 255, 0.8);
       border-radius: 12px;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
@@ -425,6 +425,11 @@
 
     #visor-pantalla-completa {
       z-index: 5000;
+    }
+
+    #visor-pantalla-completa #btn-cerrar-visor,
+    #visor-pantalla-completa #etiqueta-visor-render {
+      z-index: 2;
     }
 
     /* Botón pantalla completa */
