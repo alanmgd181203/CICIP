@@ -12,7 +12,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="cicip-build" content="20250602-minimapa-fix2">
+  <meta name="cicip-build" content="20250602-header-overlay">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="assets/imagen-portada.webp">
   <title>Exploración de Proyecto CICIP</title>
@@ -73,18 +73,32 @@
     }
 
     #contenedor-encabezado {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      width: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 15px;
-      width: 100%;
-      position: relative;
+      gap: 12px;
+      min-height: 52px;
+      padding: 10px 56px;
+      padding-top: max(10px, env(safe-area-inset-top));
+      background: rgba(0, 0, 0, 0.52);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.28);
       z-index: 250;
       pointer-events: none;
     }
 
     #contenedor-encabezado h1 {
-      margin: 32px 0;
+      margin: 0;
+      font-size: clamp(1rem, 2.6vw, 1.75rem);
+      letter-spacing: 0.03em;
+      text-shadow: 0 1px 10px rgba(0, 0, 0, 0.65);
     }
 
     #contenedor-encabezado h1,
@@ -95,22 +109,26 @@
     #btn-regresar-planta {
       display: none;
       flex-shrink: 0;
-      background: rgba(0, 0, 0, 0.6);
+      background: rgba(0, 0, 0, 0.45);
       color: white;
-      border: 2px solid white;
+      border: 1px solid rgba(255, 255, 255, 0.55);
       border-radius: 50%;
-      width: 40px;
-      height: 40px;
+      width: 36px;
+      height: 36px;
       cursor: pointer;
-      font-size: 18px;
+      font-size: 16px;
       transition: all 0.2s;
-      position: relative;
+      position: absolute;
+      left: max(12px, env(safe-area-inset-left));
+      top: 50%;
+      transform: translateY(-50%);
       z-index: 251;
+      pointer-events: auto;
     }
 
     #btn-regresar-planta:hover {
-      background: rgba(255, 255, 255, 0.2);
-      transform: scale(1.1);
+      background: rgba(255, 255, 255, 0.18);
+      transform: translateY(-50%) scale(1.08);
     }
 
     .map-container {
@@ -120,6 +138,8 @@
       display: flex;
       justify-content: center;
       align-items: flex-start;
+      min-height: 100vh;
+      min-height: 100dvh;
     }
 
     .mapa-interactivo {
@@ -599,6 +619,25 @@
 
     /* Móvil: cámaras y botones escalan con la imagen (misma UI que laptop) */
     @media only screen and (max-width: 900px) {
+      #contenedor-encabezado {
+        min-height: 44px;
+        padding: 7px 44px 7px 12px;
+        padding-top: max(7px, env(safe-area-inset-top));
+        background: rgba(0, 0, 0, 0.58);
+      }
+
+      #contenedor-encabezado h1 {
+        font-size: clamp(0.82rem, 3.8vw, 1.1rem);
+        letter-spacing: 0.02em;
+      }
+
+      #btn-regresar-planta {
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+        left: max(10px, env(safe-area-inset-left));
+      }
+
       .camara-render,
       .camara-exterior,
       .camara-exterior-edificios,
