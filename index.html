@@ -1508,6 +1508,12 @@
 
     /* ── Panel HUD ── */
     const panelInfo = document.getElementById('panel-info');
+    let tituloEspacioActual = document.getElementById('titulo-principal').textContent.trim();
+
+    function fijarTituloPrincipal(texto) {
+      tituloEspacioActual = texto;
+      document.getElementById('titulo-principal').textContent = texto;
+    }
 
     function mostrarInfo(texto) {
       panelInfo.innerText = texto;
@@ -1564,7 +1570,7 @@
       overlay.style.opacity = '1';
 
       setTimeout(function () {
-        document.getElementById('titulo-principal').textContent = 'Exploración Exterior';
+        fijarTituloPrincipal('Exploración Exterior');
 
         setTimeout(function () {
           overlay.style.opacity = '0';
@@ -1591,7 +1597,7 @@
       overlay.style.opacity = '1';
 
       setTimeout(function () {
-        document.getElementById('titulo-principal').textContent = 'Exploración de Proyecto CICIP';
+        fijarTituloPrincipal('Exploración de Proyecto CICIP');
 
         setTimeout(function () {
           overlay.style.opacity = '0';
@@ -1617,7 +1623,7 @@
       overlay.style.opacity = '1';
 
       setTimeout(function () {
-        document.getElementById('titulo-principal').textContent = 'Exterior de Edificios';
+        fijarTituloPrincipal('Exterior de Edificios');
 
         setTimeout(function () {
           overlay.style.opacity = '0';
@@ -1643,7 +1649,7 @@
       overlay.style.opacity = '1';
 
       setTimeout(function () {
-        document.getElementById('titulo-principal').textContent = 'Vista de Edificios';
+        fijarTituloPrincipal('Vista de Edificios');
 
         setTimeout(function () {
           overlay.style.opacity = '0';
@@ -1702,7 +1708,7 @@
       overlay.style.opacity = '1';
 
       setTimeout(function () {
-        document.getElementById('titulo-principal').textContent = cfg.titulo;
+        fijarTituloPrincipal(cfg.titulo);
 
         setTimeout(function () {
           overlay.style.opacity = '0';
@@ -1730,7 +1736,7 @@
       overlay.style.opacity = '1';
 
       setTimeout(function () {
-        document.getElementById('titulo-principal').textContent = e3Titulo;
+        fijarTituloPrincipal(e3Titulo);
 
         setTimeout(function () {
           overlay.style.opacity = '0';
@@ -1783,7 +1789,7 @@
         activarCortinaCarga();
 
         asignarImagenPrincipal('assets/planta-edificios.webp').then(function () {
-          document.getElementById('titulo-principal').textContent = 'Vista de Edificios';
+          fijarTituloPrincipal('Vista de Edificios');
           mapImg.classList.remove('animacion-salir');
           void mapImg.offsetWidth;
           mapImg.classList.add('animacion-entrar');
@@ -1801,14 +1807,13 @@
     }
 
     /* ── Visor de renders estilo Street View ── */
-    function abrirRender(rutaImagen, elementoCamara, nombreEspacio) {
+    function abrirRender(rutaImagen, elementoCamara) {
       const visor = document.getElementById('visor-pantalla-completa');
       const imagenActiva = document.getElementById('imagen-render-activa');
       const spinnerRender = document.getElementById('spinner-render');
       const mapContainer = document.querySelector('.map-container');
       const etiqueta = document.getElementById('etiqueta-visor-render');
-      const tituloEncabezado = document.getElementById('titulo-principal').textContent.trim();
-      const textoEtiqueta = tituloEncabezado || (nombreEspacio || '').trim();
+      const textoEtiqueta = tituloEspacioActual.trim();
 
       if (textoEtiqueta) {
         etiqueta.textContent = textoEtiqueta;
@@ -2020,7 +2025,7 @@
         activarCortinaCarga();
 
         asignarImagenPrincipal(rutaImagen).then(function () {
-          document.getElementById('titulo-principal').textContent = nuevoTitulo;
+          fijarTituloPrincipal(nuevoTitulo);
           mapImg.classList.remove('animacion-salir-e3');
           void mapImg.offsetWidth;
           mapImg.classList.add('animacion-entrar-e3');
@@ -2052,7 +2057,7 @@
       activarCortinaCarga();
 
       asignarImagenPrincipal('assets/planta-edificios.webp').then(function () {
-        document.getElementById('titulo-principal').textContent = 'Vista de Edificios';
+        fijarTituloPrincipal('Vista de Edificios');
         mapImg.classList.remove('animacion-salir', 'animacion-entrar', 'animacion-salir-e3', 'animacion-entrar-e3', 'animacion-entrar-regreso-e3');
         void mapImg.offsetWidth;
         mapImg.classList.add('animacion-entrar');
@@ -2082,7 +2087,7 @@
       activarCortinaCarga();
 
       asignarImagenPrincipal(IMAGEN_INICIAL).then(function () {
-        document.getElementById('titulo-principal').textContent = 'Exploración de Proyecto CICIP';
+        fijarTituloPrincipal('Exploración de Proyecto CICIP');
         mapImg.classList.remove('animacion-salir', 'animacion-entrar');
         void mapImg.offsetWidth;
         mapImg.classList.add('animacion-entrar');
@@ -2135,7 +2140,7 @@
         asignarImagenPrincipal(rutaImagen),
         asignarImagenSecundaria(rutaImagen2 || null)
       ]).then(function () {
-        document.getElementById('titulo-principal').textContent = nuevoTitulo;
+        fijarTituloPrincipal(nuevoTitulo);
         mapImg.classList.remove('animacion-salir', 'animacion-entrar', 'animacion-salir-e3', 'animacion-entrar-e3', 'animacion-entrar-regreso-e3');
         void mapImg.offsetWidth;
 
@@ -2193,7 +2198,7 @@
           asignarImagenPrincipal(rutaImagen),
           asignarImagenSecundaria(rutaImagen2 || null)
         ]).then(function () {
-          document.getElementById('titulo-principal').textContent = nuevoTitulo;
+          fijarTituloPrincipal(nuevoTitulo);
           mapImg.classList.remove('animacion-salir-e3');
           mapImg.style.transform = '';
           void mapImg.offsetWidth;
@@ -2256,7 +2261,7 @@
       activarCortinaCarga();
 
       asignarImagenPrincipal(e3Imagen).then(function () {
-        document.getElementById('titulo-principal').textContent = e3Titulo;
+        fijarTituloPrincipal(e3Titulo);
         mapImg.classList.remove('animacion-salir', 'animacion-entrar', 'animacion-salir-e3', 'animacion-entrar-e3', 'animacion-entrar-regreso-e3');
         void mapImg.offsetWidth;
         mapImg.classList.add('animacion-entrar');
