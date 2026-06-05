@@ -12,7 +12,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="cicip-build" content="20250602-minimapa-movil">
+  <meta name="cicip-build" content="20250602-minimapa-fix2">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="assets/imagen-portada.webp">
   <title>Exploración de Proyecto CICIP</title>
@@ -652,6 +652,31 @@
         cursor: pointer;
       }
 
+      /* Minimapa render móvil: sin etiquetas en modo guardado */
+      body.visor-render-abierto .map-container.modo-minimapa:not(.minimapa-expandido) .etiqueta-navegacion,
+      body.visor-render-abierto .map-container.modo-minimapa:not(.minimapa-expandido) .etiqueta-zona-movil {
+        display: none !important;
+      }
+
+      /* Minimapa render móvil expandido: etiquetas al 50% */
+      body.visor-render-abierto .map-container.modo-minimapa.minimapa-expandido .etiqueta-navegacion {
+        font-size: 6px;
+        padding: 3px 8px 3px 6px;
+        gap: 4px;
+        border-radius: 3px;
+        letter-spacing: 0.06em;
+      }
+
+      body.visor-render-abierto .map-container.modo-minimapa.minimapa-expandido .etiqueta-navegacion::before {
+        font-size: 8px;
+      }
+
+      body.visor-render-abierto .map-container.modo-minimapa.minimapa-expandido .etiqueta-zona-movil {
+        font-size: clamp(2.8px, 0.68vw, 4px);
+        padding: 1px 2.5px;
+        max-width: min(12vw, 48px);
+      }
+
       #etiqueta-visor-render {
         bottom: 16px;
         right: 16px;
@@ -662,7 +687,8 @@
       }
 
       /* Nombres de espacios en plantas de edificios (sin hover en táctil) */
-      .mapa-interactivo > .etiqueta-zona-movil {
+      body:not(.visor-render-abierto) .mapa-interactivo > .etiqueta-zona-movil,
+      body.visor-render-abierto .map-container.modo-minimapa.minimapa-expandido .mapa-interactivo > .etiqueta-zona-movil {
         display: block;
         position: absolute;
         transform: translate(-50%, -50%);
@@ -1253,8 +1279,13 @@
 
     function ajustarMapaInteractivo() {
       if (!mapaInteractivo) return;
+      if (document.body.classList.contains('visor-render-abierto') && esVistaMovil()) {
+        fijarAnchoMinimapaRender();
+        return;
+      }
       mapaInteractivo.style.width = '';
       mapaInteractivo.style.height = '';
+      mapaInteractivo.style.maxWidth = '';
     }
 
     function extraerRutasOnclick(onclick) {
@@ -1853,12 +1884,53 @@
     /* ── Visor de renders estilo Street View ── */
     let minimapaRenderTimer = null;
 
+    function fijarAnchoMinimapaRender() {
+      if (!esVistaMovil() || !document.body.classList.contains('visor-render-abierto')) return;
+      var mapContainer = document.querySelector('.map-container.modo-minimapa');
+      if (!mapContainer || !mapaInteractivo) return;
+      var ancho = mapContainer.clientWidth;
+      if (ancho < 1) return;
+      mapaInteractivo.style.width = ancho + 'px';
+      mapaInteractivo.style.maxWidth = ancho + 'px';
+    }
+
+    function restaurarEtiquetasMinimapaRender() {
+      var mapContainer = document.querySelector('.map-container');
+      if (!mapContainer) return;
+      mapContainer.querySelectorAll('.etiqueta-navegacion, .etiqueta-zona-movil').forEach(function (el) {
+        el.style.removeProperty('display');
+        el.style.removeProperty('visibility');
+        el.style.removeProperty('opacity');
+      });
+    }
+
+    function sincronizarEtiquetasMinimapaRender() {
+      if (!esVistaMovil()) return;
+      var mapContainer = document.querySelector('.map-container.modo-minimapa');
+      if (!mapContainer) return;
+      var ocultar = !mapContainer.classList.contains('minimapa-expandido');
+      mapContainer.querySelectorAll('.etiqueta-navegacion, .etiqueta-zona-movil').forEach(function (el) {
+        if (ocultar) {
+          el.style.setProperty('display', 'none', 'important');
+          el.style.setProperty('visibility', 'hidden', 'important');
+          el.style.setProperty('opacity', '0', 'important');
+        } else {
+          el.style.removeProperty('display');
+          el.style.removeProperty('visibility');
+          el.style.removeProperty('opacity');
+        }
+      });
+      if (!ocultar) sincronizarVisibilidadEtiquetasMovil();
+    }
+
     function colapsarMinimapaRender() {
       if (!esVistaMovil()) return;
       var mapContainer = document.querySelector('.map-container.modo-minimapa');
       if (!mapContainer) return;
       mapContainer.classList.remove('minimapa-expandido');
       mapContainer.classList.add('minimapa-compacto');
+      sincronizarEtiquetasMinimapaRender();
+      requestAnimationFrame(fijarAnchoMinimapaRender);
     }
 
     function expandirMinimapaRender() {
@@ -1867,6 +1939,8 @@
       if (!mapContainer) return;
       mapContainer.classList.remove('minimapa-compacto');
       mapContainer.classList.add('minimapa-expandido');
+      sincronizarEtiquetasMinimapaRender();
+      requestAnimationFrame(fijarAnchoMinimapaRender);
       reiniciarTimerMinimapaRender();
     }
 
@@ -1884,6 +1958,10 @@
       var mapContainer = document.querySelector('.map-container');
       if (!mapContainer) return;
       mapContainer.classList.remove('minimapa-compacto', 'minimapa-expandido');
+      if (mapContainer._minimapaTransitionHandler) {
+        mapContainer.removeEventListener('transitionend', mapContainer._minimapaTransitionHandler);
+        mapContainer._minimapaTransitionHandler = null;
+      }
       if (mapContainer._minimapaTapHandler) {
         mapContainer.removeEventListener('click', mapContainer._minimapaTapHandler, true);
         mapContainer._minimapaTapHandler = null;
@@ -1893,6 +1971,7 @@
         mapContainer.removeEventListener('click', mapContainer._minimapaInteractHandler);
         mapContainer._minimapaInteractHandler = null;
       }
+      restaurarEtiquetasMinimapaRender();
     }
 
     function prepararMinimapaRenderMovil() {
@@ -1902,6 +1981,15 @@
       if (!mapContainer) return;
 
       mapContainer.classList.add('minimapa-compacto');
+      sincronizarEtiquetasMinimapaRender();
+      requestAnimationFrame(fijarAnchoMinimapaRender);
+
+      mapContainer._minimapaTransitionHandler = function (e) {
+        if (e.target !== mapContainer || e.propertyName !== 'width') return;
+        if (!document.body.classList.contains('visor-render-abierto')) return;
+        fijarAnchoMinimapaRender();
+      };
+      mapContainer.addEventListener('transitionend', mapContainer._minimapaTransitionHandler);
 
       mapContainer._minimapaTapHandler = function (e) {
         if (!mapContainer.classList.contains('minimapa-compacto')) return;
@@ -1963,10 +2051,13 @@
       if (mapContainer) mapContainer.classList.add('modo-minimapa');
       if (renderYaAbierto && esVistaMovil() && mapContainer && mapContainer.classList.contains('minimapa-expandido')) {
         reiniciarTimerMinimapaRender();
+        fijarAnchoMinimapaRender();
       } else {
         prepararMinimapaRenderMovil();
       }
-      ajustarMapaInteractivo();
+      if (!renderYaAbierto) {
+        ajustarMapaInteractivo();
+      }
     }
 
     function cerrarRender() {
@@ -2708,8 +2799,8 @@
     aplicarCandadoHerramientasDev();
   </script>
 
-  <script src="navs.js?v=20250602b"></script>
-  <script src="cameras.js?v=20250602b"></script>
+  <script src="navs.js?v=20250602c"></script>
+  <script src="cameras.js?v=20250602c"></script>
   <script>
     iniciarCargaInicial();
   </script>
