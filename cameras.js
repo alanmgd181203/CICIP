@@ -246,10 +246,21 @@ const camerasEdificio1 = `
       </svg>
     </div>
 
-    <!-- Sanitarios Ed.1: Render 49 (Sureste) -->
-    <div id="camara-sanitarios1-49" class="camara-render"
+    <!-- Lab de Pruebas Ed.1: Render 49 (Sureste) -->
+    <div id="camara-pruebas1-49" class="camara-render"
          style="display:none; position:absolute; top:74.62%; left:65.61%; transform:translate(-50%, -50%) rotate(135deg);"
          onclick="abrirRender('assets/49.webp', this)">
+      <svg viewBox="0 0 100 100" width="100%" height="100%" fill="none" stroke="white" stroke-width="4">
+        <path d="M50 40 L20 10 A 45 45 0 0 1 80 10 Z" fill="rgba(255,255,255,0.4)" stroke="none"/>
+        <circle cx="50" cy="50" r="12" fill="white"/>
+        <circle cx="50" cy="50" r="6" fill="#333"/>
+      </svg>
+    </div>
+
+    <!-- Lab de Pruebas Ed.1: Render 51 (Sur–Suroeste) -->
+    <div id="camara-pruebas1-51" class="camara-render"
+         style="display:none; position:absolute; top:21.46%; left:58.94%; transform:translate(-50%, -50%) rotate(202.5deg);"
+         onclick="abrirRender('assets/51.webp', this)">
       <svg viewBox="0 0 100 100" width="100%" height="100%" fill="none" stroke="white" stroke-width="4">
         <path d="M50 40 L20 10 A 45 45 0 0 1 80 10 Z" fill="rgba(255,255,255,0.4)" stroke="none"/>
         <circle cx="50" cy="50" r="12" fill="white"/>
@@ -261,17 +272,6 @@ const camerasEdificio1 = `
     <div id="camara-sanitarios1-50" class="camara-render"
          style="display:none; position:absolute; top:65.35%; left:56.37%; transform:translate(-50%, -50%) rotate(0deg);"
          onclick="abrirRender('assets/50.webp', this)">
-      <svg viewBox="0 0 100 100" width="100%" height="100%" fill="none" stroke="white" stroke-width="4">
-        <path d="M50 40 L20 10 A 45 45 0 0 1 80 10 Z" fill="rgba(255,255,255,0.4)" stroke="none"/>
-        <circle cx="50" cy="50" r="12" fill="white"/>
-        <circle cx="50" cy="50" r="6" fill="#333"/>
-      </svg>
-    </div>
-
-    <!-- Sanitarios Ed.1: Render 51 (Sur–Suroeste) -->
-    <div id="camara-sanitarios1-51" class="camara-render"
-         style="display:none; position:absolute; top:21.46%; left:58.94%; transform:translate(-50%, -50%) rotate(202.5deg);"
-         onclick="abrirRender('assets/51.webp', this)">
       <svg viewBox="0 0 100 100" width="100%" height="100%" fill="none" stroke="white" stroke-width="4">
         <path d="M50 40 L20 10 A 45 45 0 0 1 80 10 Z" fill="rgba(255,255,255,0.4)" stroke="none"/>
         <circle cx="50" cy="50" r="12" fill="white"/>
