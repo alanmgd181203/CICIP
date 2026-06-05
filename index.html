@@ -388,8 +388,8 @@
       z-index: 65;
     }
 
-    /* Etiquetas de espacio en plantas — solo móvil (ver @media ≤900px) */
-    .etiqueta-zona-movil {
+    /* Etiquetas de espacio en plantas — ocultas en escritorio */
+    .mapa-interactivo > .etiqueta-zona-movil {
       display: none;
     }
 
@@ -605,7 +605,7 @@
       }
 
       /* Nombres de espacios en plantas de edificios (sin hover en táctil) */
-      .etiqueta-zona-movil {
+      .mapa-interactivo > .etiqueta-zona-movil {
         display: block;
         position: absolute;
         transform: translate(-50%, -50%);
@@ -1661,7 +1661,7 @@
           el.style.display = (cls === e3Zonas) ? 'block' : 'none';
         });
       });
-      instalarEtiquetasMovilEdificios();
+      sincronizarVisibilidadEtiquetasMovil();
     }
 
     function ocultarModoExteriorEdificio() {
@@ -1849,18 +1849,40 @@
       return coincidencia ? coincidencia[1] : '';
     }
 
-    function centroZonaEdificio(zona) {
-      var style = zona.getAttribute('style') || '';
-      var ellipse = style.match(/clip-path:ellipse\([^)]+\s+at\s+([\d.]+)%\s+([\d.]+)%\)/);
-      if (ellipse) {
-        return { x: parseFloat(ellipse[1]), y: parseFloat(ellipse[2]) };
+    function parsePuntosPoligono(texto) {
+      return texto.split(',').map(function (segmento) {
+        var partes = segmento.trim().split(/\s+/);
+        return {
+          x: parseFloat(partes[0]),
+          y: parseFloat(partes[1])
+        };
+      }).filter(function (p) {
+        return !isNaN(p.x) && !isNaN(p.y);
+      });
+    }
+
+    function centroPoligono(puntos) {
+      if (!puntos.length) return { x: 50, y: 50 };
+      if (puntos.length === 1) return puntos[0];
+      if (puntos.length === 2) {
+        return {
+          x: (puntos[0].x + puntos[1].x) / 2,
+          y: (puntos[0].y + puntos[1].y) / 2
+        };
       }
-      var polygon = style.match(/clip-path:polygon\(([^)]+)\)/);
-      if (polygon) {
-        var puntos = polygon[1].split(',').map(function (segmento) {
-          var partes = segmento.trim().split(/\s+/);
-          return { x: parseFloat(partes[0]), y: parseFloat(partes[1]) };
-        });
+
+      var area = 0;
+      var cx = 0;
+      var cy = 0;
+      for (var i = 0; i < puntos.length; i++) {
+        var j = (i + 1) % puntos.length;
+        var cross = puntos[i].x * puntos[j].y - puntos[j].x * puntos[i].y;
+        area += cross;
+        cx += (puntos[i].x + puntos[j].x) * cross;
+        cy += (puntos[i].y + puntos[j].y) * cross;
+      }
+      area *= 0.5;
+      if (Math.abs(area) < 0.0001) {
         var sumX = 0;
         var sumY = 0;
         puntos.forEach(function (p) {
@@ -1869,25 +1891,61 @@
         });
         return { x: sumX / puntos.length, y: sumY / puntos.length };
       }
+      return { x: cx / (6 * area), y: cy / (6 * area) };
+    }
+
+    function centroZonaEdificio(zona) {
+      var style = zona.getAttribute('style') || '';
+      var ellipse = style.match(/clip-path:ellipse\([^)]+\s+at\s+([\d.]+)%\s+([\d.]+)%\)/i);
+      if (ellipse) {
+        return { x: parseFloat(ellipse[1]), y: parseFloat(ellipse[2]) };
+      }
+      var polygon = style.match(/clip-path:polygon\(([^)]+)\)/i);
+      if (polygon) {
+        return centroPoligono(parsePuntosPoligono(polygon[1]));
+      }
       return { x: 50, y: 50 };
     }
 
-    function instalarEtiquetasMovilEdificios() {
+    function claseEdificioZona(zona) {
+      var coincidencia = zona.className.match(/zonas-edificio-[123]/);
+      return coincidencia ? coincidencia[0] : '';
+    }
+
+    function sincronizarVisibilidadEtiquetasMovil() {
       if (!esVistaMovil()) return;
+      var escena3Activa = false;
+      document.querySelectorAll('.botones-escena-3.zona-interactiva[class*="zonas-edificio-"]').forEach(function (zona) {
+        if (zona.style.display === 'block') escena3Activa = true;
+      });
+      mapaInteractivo.querySelectorAll('.etiqueta-zona-movil').forEach(function (etiqueta) {
+        if (!escena3Activa || !e3Zonas) {
+          etiqueta.style.display = 'none';
+          return;
+        }
+        etiqueta.style.display = etiqueta.dataset.edificio === e3Zonas ? 'block' : 'none';
+      });
+    }
+
+    function instalarEtiquetasMovilEdificios() {
+      mapaInteractivo.querySelectorAll('.etiqueta-zona-movil').forEach(function (el) {
+        el.remove();
+      });
+      if (!esVistaMovil()) return;
+
       document.querySelectorAll('.botones-escena-3.zona-interactiva[class*="zonas-edificio-"]').forEach(function (zona) {
         var nombre = nombreZonaEdificio(zona);
         if (!nombre) return;
-        var etiqueta = zona.querySelector('.etiqueta-zona-movil');
         var centro = centroZonaEdificio(zona);
-        if (!etiqueta) {
-          etiqueta = document.createElement('span');
-          etiqueta.className = 'etiqueta-zona-movil';
-          zona.appendChild(etiqueta);
-        }
+        var etiqueta = document.createElement('span');
+        etiqueta.className = 'etiqueta-zona-movil';
+        etiqueta.dataset.edificio = claseEdificioZona(zona);
         etiqueta.textContent = nombre;
         etiqueta.style.left = centro.x + '%';
         etiqueta.style.top = centro.y + '%';
+        mapaInteractivo.appendChild(etiqueta);
       });
+      sincronizarVisibilidadEtiquetasMovil();
     }
 
     function irAEscena3(rutaImagen, nuevoTitulo, origenX, origenY, claseZonas) {
@@ -2180,7 +2238,10 @@
       ajustarMapaInteractivo();
       instalarEtiquetasMovilEdificios();
     });
-    mapImg.addEventListener('load', ajustarMapaInteractivo);
+    mapImg.addEventListener('load', function () {
+      ajustarMapaInteractivo();
+      instalarEtiquetasMovilEdificios();
+    });
     instalarEtiquetasMovilEdificios();
   </script>
 
