@@ -12,7 +12,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="cicip-build" content="20250602-minimapa-original">
+  <meta name="cicip-build" content="20250602-minimapa-fijo">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="assets/imagen-portada.webp">
   <title>Exploración de Proyecto CICIP</title>
@@ -450,13 +450,11 @@
       position: fixed !important;
       bottom: 20px;
       left: 20px;
-      width: 300px !important;
       height: auto;
       z-index: 6000;
       border: 3px solid rgba(255, 255, 255, 0.8);
       border-radius: 12px;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
-      transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
       background: #1a1a1a;
       pointer-events: auto;
     }
@@ -474,8 +472,16 @@
       z-index: 2;
     }
 
-    /* Minimapa en vista render (laptop): etiquetas nav al 80% */
+    /* Minimapa en vista render (laptop): fijo 300px, sin animación de tamaño */
     @media only screen and (min-width: 901px) {
+      body.visor-render-abierto .map-container.modo-minimapa {
+        width: 300px !important;
+        min-width: 300px !important;
+        max-width: 300px !important;
+        transition: none;
+        cursor: default;
+      }
+
       body.visor-render-abierto .map-container.modo-minimapa .etiqueta-navegacion {
         font-size: 9.6px;
         padding: 5.6px 12.8px 5.6px 9.6px;
@@ -686,8 +692,30 @@
         font-size: clamp(9px, 2.2vw, 12px) !important;
       }
 
-      .map-container.modo-minimapa {
+      body.visor-render-abierto .map-container.modo-minimapa {
         width: min(240px, 52vw) !important;
+        bottom: 16px;
+        left: 16px;
+        transition: none;
+      }
+
+      /* Minimapa en vista render (móvil): etiquetas al 50% */
+      body.visor-render-abierto .map-container.modo-minimapa .etiqueta-navegacion {
+        font-size: 6px;
+        padding: 3px 8px 3px 6px;
+        gap: 4px;
+        border-radius: 3px;
+        letter-spacing: 0.06em;
+      }
+
+      body.visor-render-abierto .map-container.modo-minimapa .etiqueta-navegacion::before {
+        font-size: 8px;
+      }
+
+      body.visor-render-abierto .map-container.modo-minimapa .etiqueta-zona-movil {
+        font-size: clamp(2.8px, 0.68vw, 4px);
+        padding: 1px 2.5px;
+        max-width: min(12vw, 48px);
       }
 
       #etiqueta-visor-render {
@@ -1937,10 +1965,14 @@
         imagenActiva.onload();
       }
 
+      var renderYaAbierto = visor.style.display === 'block';
+
       visor.style.display = 'block';
       document.body.classList.add('visor-render-abierto');
       if (mapContainer) mapContainer.classList.add('modo-minimapa');
-      ajustarMapaInteractivo();
+      if (!renderYaAbierto) {
+        ajustarMapaInteractivo();
+      }
     }
 
     function cerrarRender() {
@@ -2686,8 +2718,8 @@
     aplicarCandadoHerramientasDev();
   </script>
 
-  <script src="navs.js?v=20250602c"></script>
-  <script src="cameras.js?v=20250602c"></script>
+  <script src="navs.js?v=20250602d"></script>
+  <script src="cameras.js?v=20250602d"></script>
   <script>
     iniciarCargaInicial();
   </script>
