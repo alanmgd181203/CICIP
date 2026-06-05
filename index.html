@@ -432,6 +432,20 @@
       z-index: 2;
     }
 
+    /* Minimapa en vista render (laptop): etiquetas nav al 80% */
+    @media only screen and (min-width: 901px) {
+      body.visor-render-abierto .map-container.modo-minimapa .etiqueta-navegacion {
+        font-size: 9.6px;
+        padding: 5.6px 12.8px 5.6px 9.6px;
+        gap: 6.4px;
+        border-radius: 4.8px;
+      }
+
+      body.visor-render-abierto .map-container.modo-minimapa .etiqueta-navegacion::before {
+        font-size: 12.8px;
+      }
+    }
+
     /* Botón pantalla completa */
     #btn-pantalla-completa {
       position: fixed;
