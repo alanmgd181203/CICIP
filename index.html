@@ -12,7 +12,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="cicip-build" content="20250602-header-pill">
+  <meta name="cicip-build" content="20250602-minimapa-stable">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="assets/imagen-portada.webp">
   <title>Exploración de Proyecto CICIP</title>
@@ -1323,10 +1323,6 @@
 
     function ajustarMapaInteractivo() {
       if (!mapaInteractivo) return;
-      if (document.body.classList.contains('visor-render-abierto') && esVistaMovil()) {
-        fijarAnchoMinimapaRender();
-        return;
-      }
       mapaInteractivo.style.width = '';
       mapaInteractivo.style.height = '';
       mapaInteractivo.style.maxWidth = '';
@@ -1928,16 +1924,6 @@
     /* ── Visor de renders estilo Street View ── */
     let minimapaRenderTimer = null;
 
-    function fijarAnchoMinimapaRender() {
-      if (!esVistaMovil() || !document.body.classList.contains('visor-render-abierto')) return;
-      var mapContainer = document.querySelector('.map-container.modo-minimapa');
-      if (!mapContainer || !mapaInteractivo) return;
-      var ancho = mapContainer.clientWidth;
-      if (ancho < 1) return;
-      mapaInteractivo.style.width = ancho + 'px';
-      mapaInteractivo.style.maxWidth = ancho + 'px';
-    }
-
     function restaurarEtiquetasMinimapaRender() {
       var mapContainer = document.querySelector('.map-container');
       if (!mapContainer) return;
@@ -1974,7 +1960,6 @@
       mapContainer.classList.remove('minimapa-expandido');
       mapContainer.classList.add('minimapa-compacto');
       sincronizarEtiquetasMinimapaRender();
-      requestAnimationFrame(fijarAnchoMinimapaRender);
     }
 
     function expandirMinimapaRender() {
@@ -1984,7 +1969,6 @@
       mapContainer.classList.remove('minimapa-compacto');
       mapContainer.classList.add('minimapa-expandido');
       sincronizarEtiquetasMinimapaRender();
-      requestAnimationFrame(fijarAnchoMinimapaRender);
       reiniciarTimerMinimapaRender();
     }
 
@@ -2002,10 +1986,6 @@
       var mapContainer = document.querySelector('.map-container');
       if (!mapContainer) return;
       mapContainer.classList.remove('minimapa-compacto', 'minimapa-expandido');
-      if (mapContainer._minimapaTransitionHandler) {
-        mapContainer.removeEventListener('transitionend', mapContainer._minimapaTransitionHandler);
-        mapContainer._minimapaTransitionHandler = null;
-      }
       if (mapContainer._minimapaTapHandler) {
         mapContainer.removeEventListener('click', mapContainer._minimapaTapHandler, true);
         mapContainer._minimapaTapHandler = null;
@@ -2019,21 +1999,12 @@
     }
 
     function prepararMinimapaRenderMovil() {
-      limpiarMinimapaRenderMovil();
       if (!esVistaMovil()) return;
       var mapContainer = document.querySelector('.map-container.modo-minimapa');
       if (!mapContainer) return;
 
       mapContainer.classList.add('minimapa-compacto');
       sincronizarEtiquetasMinimapaRender();
-      requestAnimationFrame(fijarAnchoMinimapaRender);
-
-      mapContainer._minimapaTransitionHandler = function (e) {
-        if (e.target !== mapContainer || e.propertyName !== 'width') return;
-        if (!document.body.classList.contains('visor-render-abierto')) return;
-        fijarAnchoMinimapaRender();
-      };
-      mapContainer.addEventListener('transitionend', mapContainer._minimapaTransitionHandler);
 
       mapContainer._minimapaTapHandler = function (e) {
         if (!mapContainer.classList.contains('minimapa-compacto')) return;
@@ -2093,14 +2064,11 @@
       visor.style.display = 'block';
       document.body.classList.add('visor-render-abierto');
       if (mapContainer) mapContainer.classList.add('modo-minimapa');
-      if (renderYaAbierto && esVistaMovil() && mapContainer && mapContainer.classList.contains('minimapa-expandido')) {
-        reiniciarTimerMinimapaRender();
-        fijarAnchoMinimapaRender();
-      } else {
-        prepararMinimapaRenderMovil();
-      }
       if (!renderYaAbierto) {
+        prepararMinimapaRenderMovil();
         ajustarMapaInteractivo();
+      } else if (esVistaMovil() && mapContainer && mapContainer.classList.contains('minimapa-expandido')) {
+        reiniciarTimerMinimapaRender();
       }
     }
 
