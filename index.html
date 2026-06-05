@@ -626,6 +626,7 @@
         max-width: min(24vw, 96px);
         word-wrap: break-word;
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+        transition: opacity 0.2s ease;
       }
     }
   </style>
@@ -1148,6 +1149,7 @@
     }
 
     function activarCortinaCarga() {
+      ocultarEtiquetasMovilEdificios();
       overlay.style.opacity = '1';
       loaderEscena.style.display = 'block';
     }
@@ -1661,7 +1663,7 @@
           el.style.display = (cls === e3Zonas) ? 'block' : 'none';
         });
       });
-      sincronizarVisibilidadEtiquetasMovil();
+      revelarEtiquetasMovilEdificios();
     }
 
     function ocultarModoExteriorEdificio() {
@@ -1674,6 +1676,7 @@
     }
 
     function irAExteriorEdificio(n) {
+      ocultarEtiquetasMovilEdificios();
       ocultarInfo();
       mostrarBtnRegresarPlanta(volverAPlantaEdificio);
       edificioExteriorActivo = n;
@@ -1746,6 +1749,7 @@
 
     /* ── Navegación entre escenas ── */
     function irAEscena2() {
+      ocultarEtiquetasMovilEdificios();
       // Fijar punto de fuga hacia el centro del círculo rojo
       mapImg.style.transformOrigin = '64.82% 48.42%';
 
@@ -1912,8 +1916,24 @@
       return coincidencia ? coincidencia[0] : '';
     }
 
+    var etiquetasMovilVisibles = false;
+
+    function ocultarEtiquetasMovilEdificios() {
+      etiquetasMovilVisibles = false;
+      if (!mapaInteractivo) return;
+      mapaInteractivo.querySelectorAll('.etiqueta-zona-movil').forEach(function (etiqueta) {
+        etiqueta.style.display = 'none';
+      });
+    }
+
     function sincronizarVisibilidadEtiquetasMovil() {
       if (!esVistaMovil()) return;
+      if (!etiquetasMovilVisibles) {
+        mapaInteractivo.querySelectorAll('.etiqueta-zona-movil').forEach(function (etiqueta) {
+          etiqueta.style.display = 'none';
+        });
+        return;
+      }
       var escena3Activa = false;
       document.querySelectorAll('.botones-escena-3.zona-interactiva[class*="zonas-edificio-"]').forEach(function (zona) {
         if (zona.style.display === 'block') escena3Activa = true;
@@ -1948,7 +1968,13 @@
       sincronizarVisibilidadEtiquetasMovil();
     }
 
+    function revelarEtiquetasMovilEdificios() {
+      etiquetasMovilVisibles = true;
+      sincronizarVisibilidadEtiquetasMovil();
+    }
+
     function irAEscena3(rutaImagen, nuevoTitulo, origenX, origenY, claseZonas) {
+      ocultarEtiquetasMovilEdificios();
       cerrarRender();
       resetearZoomPlanta();
 
@@ -1995,6 +2021,7 @@
     }
 
     function volverAEscena2() {
+      ocultarEtiquetasMovilEdificios();
       ocultarInfo();
       apagarTodasLasCamaras();
       resetearZoomPlanta();
@@ -2027,6 +2054,7 @@
     }
 
     function volverAEscena1() {
+      ocultarEtiquetasMovilEdificios();
       ocultarInfo();
       apagarTodasLasCamaras();
       ocultarBtnRegresarPlanta();
@@ -2075,6 +2103,7 @@
     }
 
     function saltoLateral(rutaImagen, nuevoTitulo, flechaOcultar, flechaMostrar, rutaImagen2) {
+      ocultarEtiquetasMovilEdificios();
       cerrarRender();
       ocultarInfo();
       apagarTodasLasCamaras();
@@ -2120,6 +2149,7 @@
     /* ── Ir a Escena 4 (espacio interior) ── */
 
     function irAEscena4(rutaImagen, nuevoTitulo, origenX, origenY, rutaImagen2, escalaFija, flechaMostrar) {
+      ocultarEtiquetasMovilEdificios();
       ocultarInfo();
       apagarTodasLasCamaras();
       mostrarBtnRegresarPlanta(volverAEscena3);
@@ -2184,6 +2214,7 @@
 
     /* ── Volver a Escena 3 (planta del edificio) ── */
     function volverAEscena3() {
+      ocultarEtiquetasMovilEdificios();
       ocultarInfo();
       apagarTodasLasCamaras();
 
