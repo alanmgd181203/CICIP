@@ -10,16 +10,25 @@ import sys
 from pathlib import Path
 
 import qrcode
-from PIL import Image, ImageEnhance, ImageOps, ImageStat
+from PIL import Image, ImageDraw, ImageEnhance, ImageFont, ImageOps, ImageStat
 
 ROOT = Path(__file__).resolve().parent
 ASSETS = ROOT / "assets"
 OUT_DIR = ROOT / "output"
-URL = "https://cicip.netlify.app/"
+URL = "https://alanmgd181203.github.io/CICIP/"
 MODULE_PX = 48
 ERROR_LEVEL = qrcode.constants.ERROR_CORRECT_M
 BORDER = 4
 BLANCO_PURO = (255, 255, 255)
+TEXTO_MARCA = "CICIP"
+TEXTO_LEYENDA = "Un artista de sombras en las sombras, en busca del destello"
+TEXTO_MARCA_COLOR = (28, 28, 32)
+TEXTO_LEYENDA_COLOR = (72, 72, 78)
+TRACKING_MARCA = 0.18
+PDF_ANCHO_MM = 90
+PDF_ALTO_MM = 60
+PDF_MARGEN_MM = 2
+PDF_DPI = 300
 
 PRIORITY_NAMES = [
     "Planta Conjunto.webp",
@@ -170,6 +179,130 @@ def contar_uso(mapa: list[dict]) -> dict[str, int]:
     return dict(sorted(uso.items(), key=lambda x: -x[1]))
 
 
+def obtener_fuente_elegante(tamano: int, cursiva: bool = False) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+    if cursiva:
+        candidatos = [
+            Path("C:/Windows/Fonts/GARAIT.TTF"),
+            Path("C:/Windows/Fonts/georgiai.ttf"),
+            Path("C:/Windows/Fonts/timesi.ttf"),
+            Path("C:/Windows/Fonts/GARA.TTF"),
+        ]
+    else:
+        candidatos = [
+            Path("C:/Windows/Fonts/GARA.TTF"),
+            Path("C:/Windows/Fonts/BASKVILL.TTF"),
+            Path("C:/Windows/Fonts/georgiab.ttf"),
+            Path("C:/Windows/Fonts/timesbd.ttf"),
+            Path("/System/Library/Fonts/Supplemental/Georgia Bold.ttf"),
+            Path("/usr/share/fonts/truetype/liberation/LiberationSerif-Bold.ttf"),
+        ]
+    for ruta in candidatos:
+        if ruta.is_file():
+            return ImageFont.truetype(str(ruta), tamano)
+    return ImageFont.load_default()
+
+
+def medir_texto_con_tracking(
+    draw: ImageDraw.ImageDraw,
+    texto: str,
+    fuente: ImageFont.FreeTypeFont | ImageFont.ImageFont,
+    tracking_px: float,
+) -> tuple[int, int]:
+    if not texto:
+        return 0, 0
+    ancho = 0
+    alto = 0
+    for indice, caracter in enumerate(texto):
+        caja = draw.textbbox((0, 0), caracter, font=fuente)
+        ancho += caja[2] - caja[0]
+        alto = max(alto, caja[3] - caja[1])
+        if indice < len(texto) - 1:
+            ancho += tracking_px
+    return ancho, alto
+
+
+def dibujar_texto_con_tracking(
+    draw: ImageDraw.ImageDraw,
+    origen_x: int,
+    origen_y: int,
+    texto: str,
+    fuente: ImageFont.FreeTypeFont | ImageFont.ImageFont,
+    color: tuple[int, int, int],
+    tracking_px: float,
+) -> None:
+    x = origen_x
+    for indice, caracter in enumerate(texto):
+        draw.text((x, origen_y), caracter, font=fuente, fill=color)
+        caja = draw.textbbox((0, 0), caracter, font=fuente)
+        x += caja[2] - caja[0]
+        if indice < len(texto) - 1:
+            x += tracking_px
+
+
+def agregar_titulo_cicip(mosaico: Image.Image) -> Image.Image:
+    qr_ancho, qr_alto = mosaico.size
+    borde_inferior_px = BORDER * MODULE_PX
+    borde_lateral_px = BORDER * MODULE_PX
+    margen_superior = max(int(qr_ancho * 0.07), 44)
+    margen_inferior_titulo = max(int(qr_ancho * 0.028), 18)
+    margen_leyenda = max(int(qr_ancho * 0.002), 2)
+    margen_pie = max(int(qr_ancho * 0.012), 8)
+    margen_leyenda_lateral = max(int(qr_ancho * 0.012), 14)
+    tamano_fuente = max(int(qr_ancho * 0.118), 52)
+    tamano_leyenda = max(int(qr_ancho * 0.012), 11)
+    fuente = obtener_fuente_elegante(tamano_fuente)
+    fuente_leyenda = obtener_fuente_elegante(tamano_leyenda, cursiva=True)
+    texto = TEXTO_MARCA.upper()
+
+    medida = Image.new("RGB", (1, 1), BLANCO_PURO)
+    draw_medida = ImageDraw.Draw(medida)
+    tracking_px = tamano_fuente * TRACKING_MARCA
+    texto_ancho, texto_alto = medir_texto_con_tracking(draw_medida, texto, fuente, tracking_px)
+    caja_leyenda = draw_medida.textbbox((0, 0), TEXTO_LEYENDA, font=fuente_leyenda)
+    leyenda_alto = caja_leyenda[3] - caja_leyenda[1]
+
+    encabezado_alto = margen_superior + texto_alto + margen_inferior_titulo
+    base_cuadros_y = encabezado_alto + qr_alto - borde_inferior_px
+    leyenda_y = base_cuadros_y + margen_leyenda
+    pie_alto = max(margen_pie, leyenda_y + leyenda_alto + margen_pie - (encabezado_alto + qr_alto))
+    lienzo_alto = encabezado_alto + qr_alto + pie_alto
+    lienzo = Image.new("RGB", (qr_ancho, lienzo_alto), BLANCO_PURO)
+    lienzo.paste(mosaico, (0, encabezado_alto))
+
+    draw = ImageDraw.Draw(lienzo)
+    texto_x = (qr_ancho - texto_ancho) // 2
+    texto_y = margen_superior
+    dibujar_texto_con_tracking(draw, texto_x, texto_y, texto, fuente, TEXTO_MARCA_COLOR, tracking_px)
+
+    leyenda_ancho = caja_leyenda[2] - caja_leyenda[0]
+    leyenda_x = qr_ancho - borde_lateral_px - margen_leyenda_lateral - leyenda_ancho
+    draw.text((leyenda_x, leyenda_y), TEXTO_LEYENDA, font=fuente_leyenda, fill=TEXTO_LEYENDA_COLOR)
+    return lienzo
+
+
+def mm_a_px(mm: float, dpi: int = PDF_DPI) -> int:
+    return max(1, round(mm / 25.4 * dpi))
+
+
+def exportar_pdf_impresion(imagen: Image.Image, ruta: Path) -> None:
+    """PDF 90x60 mm (ancho x alto), listo para imprenta a 300 DPI."""
+    ancho_pag = mm_a_px(PDF_ANCHO_MM)
+    alto_pag = mm_a_px(PDF_ALTO_MM)
+    margen = mm_a_px(PDF_MARGEN_MM)
+    area_w = ancho_pag - 2 * margen
+    area_h = alto_pag - 2 * margen
+
+    arte = imagen.convert("RGB")
+    escala = min(area_w / arte.width, area_h / arte.height)
+    nuevo_w = max(1, round(arte.width * escala))
+    nuevo_h = max(1, round(arte.height * escala))
+    arte = arte.resize((nuevo_w, nuevo_h), Image.Resampling.LANCZOS)
+
+    pagina = Image.new("RGB", (ancho_pag, alto_pag), BLANCO_PURO)
+    pagina.paste(arte, ((ancho_pag - nuevo_w) // 2, (alto_pag - nuevo_h) // 2))
+    pagina.save(ruta, "PDF", resolution=PDF_DPI)
+
+
 def main() -> None:
     OUT_DIR.mkdir(exist_ok=True)
 
@@ -190,14 +323,17 @@ def main() -> None:
 
     print("\n=== Generando mosaico ===\n")
     mosaico = generar_mosaico(info, assets)
+    resultado = agregar_titulo_cicip(mosaico)
 
     out_png = OUT_DIR / "qr-artistico-cicip.png"
     out_webp = OUT_DIR / "qr-artistico-cicip.webp"
+    out_pdf = OUT_DIR / "qr-artistico-cicip-90x60mm.pdf"
     out_map = OUT_DIR / "qr-artistico-mapa.json"
     out_report = OUT_DIR / "qr-artistico-reporte.txt"
 
-    mosaico.save(out_png, optimize=True)
-    mosaico.save(out_webp, quality=92, method=6)
+    resultado.save(out_png, optimize=True)
+    resultado.save(out_webp, quality=92, method=6)
+    exportar_pdf_impresion(resultado, out_pdf)
 
     uso = contar_uso(info["mapa"])
     unicas = len(uso)
@@ -236,10 +372,12 @@ def main() -> None:
 
     print(f"  Guardado: {out_png}")
     print(f"  Guardado: {out_webp}")
+    print(f"  PDF:      {out_pdf} ({PDF_ANCHO_MM}x{PDF_ALTO_MM} mm @ {PDF_DPI} DPI)")
     print(f"  Mapa:     {out_map}")
     print(f"  Reporte:  {out_report}")
     print(f"\n  Imagenes unicas en celdas negras: {unicas}/{total_assets}")
-    print(f"  Tamano final: {mosaico.size[0]}x{mosaico.size[1]} px")
+    print(f"  Tamano QR: {mosaico.size[0]}x{mosaico.size[1]} px")
+    print(f"  Tamano final: {resultado.size[0]}x{resultado.size[1]} px (con titulo y leyenda)")
 
 
 if __name__ == "__main__":

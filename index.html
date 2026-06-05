@@ -12,7 +12,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="cicip-build" content="20250602-limpieza-minimapa">
+  <meta name="cicip-build" content="20250602-bloqueo-rotacion">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="assets/imagen-portada.webp">
   <title>Exploración de Proyecto CICIP</title>
@@ -161,7 +161,7 @@
     }
 
     .mapa-interactivo > #mapa-principal {
-      cursor: crosshair;
+      cursor: default;
     }
 
     .mapa-interactivo > #mapa-secundario {
@@ -174,21 +174,6 @@
     .mapa-interactivo > [id^="camara-"],
     .mapa-interactivo > [id^="nav-"] {
       position: absolute;
-    }
-
-    body.sin-herramienta-coords .mapa-interactivo > #mapa-principal {
-      cursor: default;
-    }
-
-    body.sin-herramienta-coords .herramienta-coordenadas-exterior {
-      cursor: default;
-    }
-
-    #btn-editor.bloqueado-dev {
-      opacity: 0.45;
-      cursor: not-allowed;
-      color: #666 !important;
-      border-color: #444 !important;
     }
 
     /* ── Animaciones cinemáticas ── */
@@ -366,14 +351,14 @@
       pointer-events: auto;
     }
 
-    .herramienta-coordenadas-exterior {
+    .capa-regreso-exterior {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
       z-index: 55;
-      cursor: crosshair;
+      cursor: default;
       pointer-events: auto;
     }
     .camara-render {
@@ -409,6 +394,68 @@
       filter: drop-shadow(0 0 15px #00ffcc) brightness(1.5);
       transform: scale(1.3);
       z-index: 65;
+    }
+
+    /* Celular en vertical: obligar rotación antes de interactuar */
+    #bloqueo-rotacion {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background-color: #0d0d0d;
+      color: white;
+      z-index: 99998;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: clamp(20px, 6vw, 40px);
+      gap: 12px;
+      pointer-events: auto;
+    }
+
+    #bloqueo-rotacion.activo {
+      display: flex;
+    }
+
+    #bloqueo-rotacion svg {
+      width: clamp(64px, 18vw, 88px);
+      height: clamp(64px, 18vw, 88px);
+      animation: rotarCelular 2s ease-in-out infinite;
+    }
+
+    #bloqueo-rotacion h2 {
+      margin: 8px 0 0;
+      font-size: clamp(1.15rem, 4.5vw, 1.6rem);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+
+    #bloqueo-rotacion p {
+      margin: 0;
+      max-width: 28ch;
+      color: rgba(255, 255, 255, 0.78);
+      font-size: clamp(0.92rem, 3.6vw, 1.05rem);
+      line-height: 1.45;
+    }
+
+    @keyframes rotarCelular {
+      0%, 100% { transform: rotate(0deg); }
+      50% { transform: rotate(90deg); }
+    }
+
+    body.bloqueo-rotacion-activo {
+      overflow: hidden;
+      height: 100dvh;
+      max-height: 100dvh;
+    }
+
+    body.bloqueo-rotacion-activo .map-container,
+    body.bloqueo-rotacion-activo #contenedor-encabezado,
+    body.bloqueo-rotacion-activo #panel-info,
+    body.bloqueo-rotacion-activo #btn-pantalla-completa,
+    body.bloqueo-rotacion-activo #visor-pantalla-completa,
+    body.bloqueo-rotacion-activo #overlay-oscuro {
+      pointer-events: none !important;
     }
 
     /* Etiquetas de espacio en plantas — ocultas en escritorio */
@@ -792,6 +839,15 @@
 </head>
 <body>
 
+  <div id="bloqueo-rotacion" aria-hidden="true" role="dialog" aria-labelledby="bloqueo-rotacion-titulo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+      <line x1="12" y1="18" x2="12.01" y2="18"></line>
+    </svg>
+    <h2 id="bloqueo-rotacion-titulo">Gira tu dispositivo</h2>
+    <p>Para explorar el proyecto, acuesta tu celular en formato horizontal.</p>
+  </div>
+
   <div id="splash-screen">
     <div class="loader-arquitectonico"></div>
     <h2 style="color: white; margin-top: 20px; font-weight: 300; letter-spacing: 3px;">CARGANDO PROYECTO...</h2>
@@ -849,7 +905,7 @@
     <div class="botones-escena-exterior btn-catchall-escena-1"
          style="display:none; z-index:10; pointer-events:none; border: 2px solid gray; background-color: rgba(128, 128, 128, 0.3);"></div>
     <!-- Escena Exterior: coordenadas (doble clic afuera del círculo = regresar) -->
-    <div class="botones-escena-exterior herramienta-coordenadas-exterior"
+    <div class="botones-escena-exterior capa-regreso-exterior"
          style="display:none;"
          onclick="clicExteriorConjunto(event)"></div>
 
@@ -871,7 +927,7 @@
     <div class="botones-exterior-edificios btn-catchall-edificios-2"
          style="display:none; z-index:10; pointer-events:none; border:2px solid gray; background-color:rgba(128,128,128,0.3);"></div>
     <!-- Escena 2 exterior: coordenadas (doble clic afuera del círculo = regresar) -->
-    <div class="botones-exterior-edificios herramienta-coordenadas-exterior"
+    <div class="botones-exterior-edificios capa-regreso-exterior"
          style="display:none;"
          onclick="clicExteriorEdificios(event)"></div>
 
@@ -903,11 +959,6 @@
          onmouseenter="mostrarInfo('Edificios')"
          onmouseleave="ocultarInfo()"></div>
 
-
-    <!-- Escena 4: herramienta coordenadas (candado: HERRAMIENTAS_DEV.coordenadasPorClic) -->
-    <div class="botones-escena-4"
-         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:10; pointer-events:none; cursor:default;"
-         onclick="mostrarCoordenadas(event)"></div>
 
     <!-- Edificio 1 — Capa Fondo (Regresar), z-index 10 — DESACTIVADO -->
     <div class="botones-escena-3 zonas-edificio-1"
@@ -1163,21 +1214,21 @@
     <!-- Exterior Edificio 1: tinte gris + coordenadas (doble clic afuera del centro = regresar) -->
     <div class="botones-exterior-edificio1 btn-catchall-edificio-planta"
          style="display:none; z-index:10; pointer-events:none; border:2px solid gray; background-color:rgba(128,128,128,0.3);"></div>
-    <div class="botones-exterior-edificio1 herramienta-coordenadas-exterior"
+    <div class="botones-exterior-edificio1 capa-regreso-exterior"
          style="display:none;"
          onclick="clicExteriorEdificio(1, event)"></div>
 
     <!-- Exterior Edificio 2: tinte gris + coordenadas -->
     <div class="botones-exterior-edificio2 btn-catchall-edificio-planta"
          style="display:none; z-index:10; pointer-events:none; border:2px solid gray; background-color:rgba(128,128,128,0.3);"></div>
-    <div class="botones-exterior-edificio2 herramienta-coordenadas-exterior"
+    <div class="botones-exterior-edificio2 capa-regreso-exterior"
          style="display:none;"
          onclick="clicExteriorEdificio(2, event)"></div>
 
     <!-- Exterior Edificio 3: tinte gris + coordenadas -->
     <div class="botones-exterior-edificio3 btn-catchall-edificio-planta"
          style="display:none; z-index:10; pointer-events:none; border:2px solid gray; background-color:rgba(128,128,128,0.3);"></div>
-    <div class="botones-exterior-edificio3 herramienta-coordenadas-exterior"
+    <div class="botones-exterior-edificio3 capa-regreso-exterior"
          style="display:none;"
          onclick="clicExteriorEdificio(3, event)"></div>
     </div>
@@ -1186,37 +1237,6 @@
   <div id="panel-info"></div>
 
   <script>
-    /* ══ Candado herramientas de desarrollo (true = habilitado) ══ */
-    window.HERRAMIENTAS_DEV = {
-      editorPoligonos: false,
-      coordenadasPorClic: false
-    };
-
-    function herramientasCoordsActivas() {
-      return window.HERRAMIENTAS_DEV.coordenadasPorClic === true;
-    }
-
-    function editorPoligonosActivo() {
-      return window.HERRAMIENTAS_DEV.editorPoligonos === true;
-    }
-
-    function aplicarCandadoHerramientasDev() {
-      document.body.classList.toggle('sin-herramienta-coords', !herramientasCoordsActivas());
-      var btnEd = document.getElementById('btn-editor');
-      if (btnEd) {
-        if (editorPoligonosActivo()) {
-          btnEd.textContent = '✏️ Editor';
-          btnEd.title = 'Editor de polígonos (tecla E)';
-          btnEd.classList.remove('bloqueado-dev');
-        } else {
-          btnEd.textContent = '🔒 Editor';
-          btnEd.title = 'Bloqueado. En index.html: HERRAMIENTAS_DEV.editorPoligonos = true';
-          btnEd.classList.add('bloqueado-dev');
-        }
-      }
-    }
-
-    /* ── Herramienta de coordenadas ── */
     const mapImg           = document.getElementById('mapa-principal');
     const mapContainer     = document.querySelector('.map-container');
     const mapaInteractivo  = document.getElementById('mapa-interactivo');
@@ -1328,7 +1348,7 @@
         el.style.display = 'none';
       });
       document.querySelectorAll(
-        '.botones-escena-1, .botones-escena-2, .botones-escena-3, .botones-escena-4, ' +
+        '.botones-escena-1, .botones-escena-2, .botones-escena-3, ' +
         '.botones-escena-exterior, .botones-exterior-edificios, ' +
         '.botones-exterior-edificio1, .botones-exterior-edificio2, .botones-exterior-edificio3'
       ).forEach(function (el) {
@@ -1570,6 +1590,7 @@
       document.body.classList.remove('carga-inicial-bloqueada');
       ocultarSplash();
       ajustarMapaInteractivo();
+      actualizarBloqueoRotacion();
     }
 
     function iniciarCargaInicial() {
@@ -1644,23 +1665,6 @@
       return mapaInteractivo.getBoundingClientRect();
     }
 
-    mapImg.addEventListener('click', function (e) {
-      if (!herramientasCoordsActivas()) return;
-      const rect = getMapaReferenciaRect();
-      const left = ((e.clientX - rect.left) / rect.width  * 100).toFixed(2);
-      const top  = ((e.clientY - rect.top)  / rect.height * 100).toFixed(2);
-      alert('Coordenadas del clic:\n\nleft: ' + left + '%\ntop:  ' + top + '%');
-    });
-
-    /* ── Herramienta de coordenadas reutilizable ── */
-    function mostrarCoordenadas(e) {
-      if (!herramientasCoordsActivas()) return;
-      const rect = getMapaReferenciaRect();
-      const left = ((e.clientX - rect.left) / rect.width  * 100).toFixed(2);
-      const top  = ((e.clientY - rect.top)  / rect.height * 100).toFixed(2);
-      alert('Coordenadas del clic:\n\nleft: ' + left + '%\ntop:  ' + top + '%');
-    }
-
     function puntoEnElipse(e, cx, cy, rx, ry) {
       const rect = getMapaReferenciaRect();
       const left = (e.clientX - rect.left) / rect.width * 100;
@@ -1671,33 +1675,17 @@
     }
 
     function clicExteriorConjunto(e) {
-      if (e.detail === 2) {
-        clearTimeout(clicExteriorConjunto._timer);
-        if (!puntoEnElipse(e, 64.82, 48.42, 20.96, 37.26)) {
-          volverAInicio();
-        }
-        return;
+      if (e.detail !== 2) return;
+      if (!puntoEnElipse(e, 64.82, 48.42, 20.96, 37.26)) {
+        volverAInicio();
       }
-      clearTimeout(clicExteriorConjunto._timer);
-      if (!herramientasCoordsActivas()) return;
-      clicExteriorConjunto._timer = setTimeout(function () {
-        mostrarCoordenadas(e);
-      }, 300);
     }
 
     function clicExteriorEdificios(e) {
-      if (e.detail === 2) {
-        clearTimeout(clicExteriorEdificios._timer);
-        if (!puntoEnElipse(e, 47.93, 49.52, 33.11, 41.69)) {
-          volverAEdificios();
-        }
-        return;
+      if (e.detail !== 2) return;
+      if (!puntoEnElipse(e, 47.93, 49.52, 33.11, 41.69)) {
+        volverAEdificios();
       }
-      clearTimeout(clicExteriorEdificios._timer);
-      if (!herramientasCoordsActivas()) return;
-      clicExteriorEdificios._timer = setTimeout(function () {
-        mostrarCoordenadas(e);
-      }, 300);
     }
 
     /* ── Panel HUD ── */
@@ -1923,18 +1911,10 @@
     function clicExteriorEdificio(n, e) {
       var cfg = EXTERIOR_EDIFICIO[n];
       var el = cfg.elipse;
-      if (e.detail === 2) {
-        clearTimeout(clicExteriorEdificio['_timer' + n]);
-        if (!puntoEnElipse(e, el.cx, el.cy, el.rx, el.ry)) {
-          volverAPlantaEdificio();
-        }
-        return;
+      if (e.detail !== 2) return;
+      if (!puntoEnElipse(e, el.cx, el.cy, el.rx, el.ry)) {
+        volverAPlantaEdificio();
       }
-      clearTimeout(clicExteriorEdificio['_timer' + n]);
-      if (!herramientasCoordsActivas()) return;
-      clicExteriorEdificio['_timer' + n] = setTimeout(function () {
-        mostrarCoordenadas(e);
-      }, 300);
     }
 
     /* ── Navegación entre escenas ── */
@@ -2043,6 +2023,21 @@
 
     function esVistaMovil() {
       return window.matchMedia('only screen and (max-width: 900px)').matches;
+    }
+
+    function requiereRotacionHorizontal() {
+      if (!esVistaMovil()) return false;
+      if (window.matchMedia('(orientation: portrait)').matches) return true;
+      return window.innerHeight > window.innerWidth;
+    }
+
+    function actualizarBloqueoRotacion() {
+      var bloqueo = document.getElementById('bloqueo-rotacion');
+      if (!bloqueo) return;
+      var activo = !cargaInicialActiva && requiereRotacionHorizontal();
+      bloqueo.classList.toggle('activo', activo);
+      bloqueo.setAttribute('aria-hidden', activo ? 'false' : 'true');
+      document.body.classList.toggle('bloqueo-rotacion-activo', activo);
     }
 
     function nombreZonaEdificio(zona) {
@@ -2365,11 +2360,6 @@
 
           function activarEscena4() {
             terminarTransicionMapa();
-            if (herramientasCoordsActivas()) {
-              document.querySelectorAll('.botones-escena-4').forEach(function (btn) {
-                btn.style.display = 'block';
-              });
-            }
             mostrarNavs(flechaMostrar || '');
             mostrarBtnRegresarPlanta(volverAEscena3);
             activarCargaReactiva(imagenEscenaActual, {
@@ -2412,11 +2402,6 @@
       mapaSecundario.src = '';
       mapaInteractivo.classList.remove('mapa-dual');
 
-      // Ocultar botones de escena 4
-      document.querySelectorAll('.botones-escena-4').forEach(function (btn) {
-        btn.style.display = 'none';
-      });
-
       mapImg.style.transformOrigin = '50% 50%';
       activarCortinaCarga();
 
@@ -2443,6 +2428,7 @@
     });
 
     window.addEventListener('resize', function () {
+      actualizarBloqueoRotacion();
       if (document.body.classList.contains('visor-render-abierto')) {
         if (esVistaMovil()) fijarDimensionMinimapaRender();
         return;
@@ -2451,13 +2437,25 @@
       instalarEtiquetasMovilEdificios();
     });
     window.addEventListener('orientationchange', function () {
-      if (document.body.classList.contains('visor-render-abierto')) {
-        if (esVistaMovil()) fijarDimensionMinimapaRender();
-        return;
-      }
-      ajustarMapaInteractivo();
-      instalarEtiquetasMovilEdificios();
+      setTimeout(function () {
+        actualizarBloqueoRotacion();
+        if (document.body.classList.contains('visor-render-abierto')) {
+          if (esVistaMovil()) fijarDimensionMinimapaRender();
+          return;
+        }
+        ajustarMapaInteractivo();
+        instalarEtiquetasMovilEdificios();
+      }, 150);
     });
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', actualizarBloqueoRotacion);
+    }
+    var mqPortrait = window.matchMedia('(orientation: portrait)');
+    if (typeof mqPortrait.addEventListener === 'function') {
+      mqPortrait.addEventListener('change', actualizarBloqueoRotacion);
+    } else if (typeof mqPortrait.addListener === 'function') {
+      mqPortrait.addListener(actualizarBloqueoRotacion);
+    }
     mapImg.addEventListener('load', function () {
       if (document.body.classList.contains('visor-render-abierto')) {
         if (esVistaMovil()) fijarDimensionMinimapaRender();
@@ -2467,292 +2465,11 @@
       instalarEtiquetasMovilEdificios();
     });
     instalarEtiquetasMovilEdificios();
+    actualizarBloqueoRotacion();
   </script>
 
-  <!-- ══════════════════════════════════════════
-       MODO EDITOR DE POLÍGONOS (herramienta dev)
-       ══════════════════════════════════════════ -->
-
-  <!-- Canvas de dibujo (cubre toda la ventana) -->
-  <canvas id="editor-canvas" style="
-    display:none;
-    position:fixed;
-    top:0; left:0;
-    z-index:999;
-    pointer-events:none;
-  "></canvas>
-
-  <!-- Panel flotante de estado -->
-  <div id="editor-panel" style="
-    display:none;
-    position:fixed;
-    top:12px; left:50%;
-    transform:translateX(-50%);
-    background:rgba(0,0,0,0.92);
-    color:#fff;
-    padding:10px 18px;
-    border-radius:8px;
-    font:bold 13px monospace;
-    z-index:1000;
-    border:1px solid #444;
-    min-width:340px;
-    text-align:center;
-    letter-spacing:0.03em;
-  ">
-    🟢 MODO EDITOR — <span id="editor-contador">0 puntos</span><br>
-    <span style="font-weight:normal; font-size:11px;">
-      Clic izq: punto &nbsp;|&nbsp; C / N: nuevo &nbsp;|&nbsp; E: salir
-    </span><br>
-    <button onclick="cerrarPoligono()"
-      style="margin-top:6px; background:#333; color:#0ff; border:1px solid #0ff;
-             border-radius:4px; padding:4px 14px; font:bold 11px monospace; cursor:pointer;">
-      ✔ Cerrar polígono
-    </button>
-    &nbsp;
-    <button onclick="limpiarEditor()"
-      style="margin-top:6px; background:#333; color:#f88; border:1px solid #f88;
-             border-radius:4px; padding:4px 14px; font:bold 11px monospace; cursor:pointer;">
-      ✖ Limpiar
-    </button>
-    <div id="editor-resultado" style="display:none; margin-top:8px;">
-      <input id="editor-output" type="text" readonly
-        style="width:100%; background:#111; color:#0ff; border:1px solid #0ff;
-               border-radius:4px; padding:5px 8px; font:12px monospace;
-               cursor:text; box-sizing:border-box;"
-        onclick="this.select()">
-      <button onclick="copiarPoligono()"
-        style="margin-top:6px; width:100%; background:#0ff; color:#000;
-               border:none; border-radius:4px; padding:5px 0; font:bold 12px monospace;
-               cursor:pointer;">
-        📋 Copiar al portapapeles
-      </button>
-      <button onclick="nuevoPoligono()"
-        style="margin-top:6px; width:100%; background:#333; color:#ff0; border:1px solid #ff0;
-               border-radius:4px; padding:5px 0; font:bold 12px monospace; cursor:pointer;">
-        ↺ Nuevo polígono
-      </button>
-      <span id="editor-copiado" style="display:none; color:#0f0; font-size:11px; margin-top:4px; display:block;">&#x200B;</span>
-    </div>
-  </div>
-
-  <!-- Botón de toggle (esquina superior izquierda) -->
-  <button id="btn-editor" onclick="toggleEditor()" style="
-    position:fixed;
-    top:12px; left:12px;
-    background:rgba(30,30,30,0.9);
-    color:#aaa;
-    border:1px solid #555;
-    border-radius:6px;
-    padding:6px 12px;
-    font:12px monospace;
-    cursor:pointer;
-    z-index:1000;
-  ">🔒 Editor</button>
-
-  <script>
-    /* ══ MODO EDITOR DE POLÍGONOS ══ */
-    let editorActivo = false;
-    let puntosEditor = [];
-    let poligonoCerrado = false;
-
-    const editorCanvas  = document.getElementById('editor-canvas');
-    const editorPanel   = document.getElementById('editor-panel');
-    const editorContador = document.getElementById('editor-contador');
-    const btnEditor     = document.getElementById('btn-editor');
-    const mapContainer  = document.querySelector('.map-container');
-    let ctx;
-
-    function toggleEditor() {
-      if (typeof editorPoligonosActivo === 'function' && !editorPoligonosActivo()) {
-        console.log('%c🔒 Editor bloqueado — HERRAMIENTAS_DEV.editorPoligonos = true', 'color:#888');
-        return;
-      }
-      editorActivo = !editorActivo;
-
-      if (editorActivo) {
-        // Canvas cubre toda la ventana
-        editorCanvas.width  = window.innerWidth;
-        editorCanvas.height = window.innerHeight;
-        editorCanvas.style.width  = window.innerWidth  + 'px';
-        editorCanvas.style.height = window.innerHeight + 'px';
-        editorCanvas.style.display = 'block';
-        editorCanvas.style.pointerEvents = 'auto';
-        editorCanvas.style.cursor = 'crosshair';
-        ctx = editorCanvas.getContext('2d');
-        editorPanel.style.display = 'block';
-        btnEditor.style.color = '#0f0';
-        btnEditor.style.borderColor = '#0f0';
-        editorCanvas.addEventListener('click',      onEditorClick);
-        editorCanvas.addEventListener('dblclick',   onEditorDblClick);
-        editorCanvas.addEventListener('contextmenu', onEditorCerrar);
-        console.log('%c✏️  Modo Editor ACTIVO', 'color:lime;font-weight:bold');
-      } else {
-        editorCanvas.style.display = 'none';
-        editorCanvas.style.pointerEvents = 'none';
-        editorPanel.style.display = 'none';
-        btnEditor.style.color = '#aaa';
-        btnEditor.style.borderColor = '#555';
-        editorCanvas.removeEventListener('click',      onEditorClick);
-        editorCanvas.removeEventListener('dblclick',   onEditorDblClick);
-        editorCanvas.removeEventListener('contextmenu', onEditorCerrar);
-        limpiarEditor();
-        console.log('%c✏️  Modo Editor DESACTIVADO', 'color:gray');
-      }
-    }
-
-    /* Cuando hay 2 imágenes apiladas, los nav usan % del contenedor completo */
-    function getEditorRefRect() {
-      return mapaInteractivo.getBoundingClientRect();
-    }
-
-    function onEditorClick(e) {
-      e.preventDefault();
-      if (poligonoCerrado) nuevoPoligono();
-      // Porcentajes relativos al contenedor (o imagen única si no hay segunda)
-      const refRect = getEditorRefRect();
-      const relX = e.clientX - refRect.left;
-      const relY = e.clientY - refRect.top;
-      const left = (relX / refRect.width  * 100).toFixed(2);
-      const top  = (relY / refRect.height * 100).toFixed(2);
-      // Posición en pantalla para dibujar (coordenadas del canvas full-window)
-      puntosEditor.push({ px: e.clientX, py: e.clientY, left, top });
-      editorContador.textContent = puntosEditor.length + ' punto' + (puntosEditor.length !== 1 ? 's' : '');
-      dibujarEditor();
-    }
-
-    function mostrarResultadoEditor(resultado) {
-      const divRes = document.getElementById('editor-resultado');
-      const input  = document.getElementById('editor-output');
-      const aviso  = document.getElementById('editor-copiado');
-      input.value = resultado;
-      divRes.style.display = 'block';
-      aviso.textContent = '';
-      setTimeout(function() { input.select(); }, 50);
-    }
-
-    function copiarPoligono() {
-      const input = document.getElementById('editor-output');
-      const aviso = document.getElementById('editor-copiado');
-      input.select();
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(input.value).then(function() {
-          aviso.textContent = '✔ ¡Copiado!';
-        }).catch(function() {
-          aviso.textContent = 'Selecciona el texto manualmente';
-        });
-      } else {
-        try {
-          document.execCommand('copy');
-          aviso.textContent = '✔ ¡Copiado!';
-        } catch(err) {
-          aviso.textContent = 'Selecciona el texto manualmente';
-        }
-      }
-    }
-
-    function onEditorDblClick(e) {
-      e.preventDefault();
-      cerrarPoligono();
-    }
-
-    function onEditorCerrar(e) {
-      e.preventDefault();
-      cerrarPoligono();
-    }
-
-    function cerrarPoligono() {
-      if (puntosEditor.length < 3) {
-        document.getElementById('editor-contador').textContent = '⚠ Necesitas al menos 3 puntos';
-        return;
-      }
-      const poligono = puntosEditor
-        .map(function(p) { return p.left + '% ' + p.top + '%'; })
-        .join(', ');
-      const resultado = 'clip-path: polygon(' + poligono + ');';
-      poligonoCerrado = true;
-      mostrarResultadoEditor(resultado);
-    }
-
-    function nuevoPoligono() {
-      puntosEditor = [];
-      poligonoCerrado = false;
-      if (ctx) ctx.clearRect(0, 0, editorCanvas.width, editorCanvas.height);
-      if (editorContador) editorContador.textContent = '0 puntos';
-      const divRes = document.getElementById('editor-resultado');
-      const input  = document.getElementById('editor-output');
-      const aviso  = document.getElementById('editor-copiado');
-      if (divRes) divRes.style.display = 'none';
-      if (input) input.value = '';
-      if (aviso) aviso.textContent = '';
-    }
-
-    function limpiarEditor() {
-      nuevoPoligono();
-    }
-
-    function dibujarEditor() {
-      ctx.clearRect(0, 0, editorCanvas.width, editorCanvas.height);
-
-      // Relleno del polígono en construcción
-      if (puntosEditor.length >= 3) {
-        ctx.beginPath();
-        ctx.moveTo(puntosEditor[0].px, puntosEditor[0].py);
-        puntosEditor.forEach(function(p) { ctx.lineTo(p.px, p.py); });
-        ctx.closePath();
-        ctx.fillStyle = 'rgba(255,255,0,0.15)';
-        ctx.fill();
-      }
-
-      // Líneas de conexión
-      if (puntosEditor.length >= 2) {
-        ctx.beginPath();
-        ctx.strokeStyle = 'rgba(255,80,80,0.9)';
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([5, 3]);
-        ctx.moveTo(puntosEditor[0].px, puntosEditor[0].py);
-        puntosEditor.forEach(function(p) { ctx.lineTo(p.px, p.py); });
-        ctx.stroke();
-        ctx.setLineDash([]);
-      }
-
-      // Puntos y etiquetas
-      puntosEditor.forEach(function(p, i) {
-        ctx.beginPath();
-        ctx.fillStyle = '#ff4444';
-        ctx.arc(p.px, p.py, 5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#fff';
-        ctx.font = 'bold 11px monospace';
-        ctx.fillText(i + 1, p.px + 8, p.py - 4);
-      });
-    }
-
-    // Tecla E: toggle editor | C / N: nuevo polígono
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'e' || e.key === 'E') {
-        if (typeof editorPoligonosActivo === 'function' && !editorPoligonosActivo()) return;
-        toggleEditor();
-      }
-      if (editorActivo && (e.key === 'c' || e.key === 'C' || e.key === 'n' || e.key === 'N')) {
-        nuevoPoligono();
-      }
-    });
-
-    // Re-ajustar canvas si la ventana cambia de tamaño
-    window.addEventListener('resize', function() {
-      if (!editorActivo) return;
-      editorCanvas.width  = window.innerWidth;
-      editorCanvas.height = window.innerHeight;
-      editorCanvas.style.width  = window.innerWidth  + 'px';
-      editorCanvas.style.height = window.innerHeight + 'px';
-      dibujarEditor();
-    });
-
-    aplicarCandadoHerramientasDev();
-  </script>
-
-  <script src="navs.js?v=20250602d"></script>
-  <script src="cameras.js?v=20250602d"></script>
+  <script src="navs.js?v=20250602f"></script>
+  <script src="cameras.js?v=20250602f"></script>
   <script>
     iniciarCargaInicial();
   </script>

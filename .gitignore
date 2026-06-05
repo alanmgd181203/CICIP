@@ -5,3 +5,7 @@ __pycache__/
 .venv/
 venv/
 .cursor/
+
+# Artefactos regenerables del generador de QR
+output/qr-artistico-mapa.json
+output/qr-artistico-reporte.txt
