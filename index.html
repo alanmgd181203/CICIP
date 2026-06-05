@@ -388,6 +388,11 @@
       z-index: 65;
     }
 
+    /* Etiquetas de espacio en plantas — solo móvil (ver @media ≤900px) */
+    .etiqueta-zona-movil {
+      display: none;
+    }
+
     .mapa-interactivo.mapa-dual > #mapa-principal,
     .mapa-interactivo.mapa-dual > #mapa-secundario {
       max-height: calc(44vh - 28px);
@@ -597,6 +602,30 @@
 
       .map-container.modo-minimapa {
         width: min(240px, 52vw) !important;
+      }
+
+      /* Nombres de espacios en plantas de edificios (sin hover en táctil) */
+      .etiqueta-zona-movil {
+        display: block;
+        position: absolute;
+        transform: translate(-50%, -50%);
+        z-index: 38;
+        pointer-events: none;
+        padding: 3px 6px;
+        background: rgba(10, 10, 10, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        border-radius: 4px;
+        color: #f2f2f2;
+        font-family: 'Segoe UI', system-ui, sans-serif;
+        font-size: clamp(7px, 1.7vw, 10px);
+        font-weight: 600;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        text-align: center;
+        line-height: 1.2;
+        max-width: min(24vw, 96px);
+        word-wrap: break-word;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.55);
       }
     }
   </style>
@@ -1632,7 +1661,7 @@
           el.style.display = (cls === e3Zonas) ? 'block' : 'none';
         });
       });
-      instalarHotspotsMovilEdificios();
+      instalarEtiquetasMovilEdificios();
     }
 
     function ocultarModoExteriorEdificio() {
@@ -1808,6 +1837,57 @@
         visor.style.display = 'none';
         ajustarMapaInteractivo();
       }, 400);
+    }
+
+    function esVistaMovil() {
+      return window.matchMedia('only screen and (max-width: 900px)').matches;
+    }
+
+    function nombreZonaEdificio(zona) {
+      var enter = zona.getAttribute('onmouseenter') || '';
+      var coincidencia = enter.match(/mostrarInfo\('([^']+)'\)/);
+      return coincidencia ? coincidencia[1] : '';
+    }
+
+    function centroZonaEdificio(zona) {
+      var style = zona.getAttribute('style') || '';
+      var ellipse = style.match(/clip-path:ellipse\([^)]+\s+at\s+([\d.]+)%\s+([\d.]+)%\)/);
+      if (ellipse) {
+        return { x: parseFloat(ellipse[1]), y: parseFloat(ellipse[2]) };
+      }
+      var polygon = style.match(/clip-path:polygon\(([^)]+)\)/);
+      if (polygon) {
+        var puntos = polygon[1].split(',').map(function (segmento) {
+          var partes = segmento.trim().split(/\s+/);
+          return { x: parseFloat(partes[0]), y: parseFloat(partes[1]) };
+        });
+        var sumX = 0;
+        var sumY = 0;
+        puntos.forEach(function (p) {
+          sumX += p.x;
+          sumY += p.y;
+        });
+        return { x: sumX / puntos.length, y: sumY / puntos.length };
+      }
+      return { x: 50, y: 50 };
+    }
+
+    function instalarEtiquetasMovilEdificios() {
+      if (!esVistaMovil()) return;
+      document.querySelectorAll('.botones-escena-3.zona-interactiva[class*="zonas-edificio-"]').forEach(function (zona) {
+        var nombre = nombreZonaEdificio(zona);
+        if (!nombre) return;
+        var etiqueta = zona.querySelector('.etiqueta-zona-movil');
+        var centro = centroZonaEdificio(zona);
+        if (!etiqueta) {
+          etiqueta = document.createElement('span');
+          etiqueta.className = 'etiqueta-zona-movil';
+          zona.appendChild(etiqueta);
+        }
+        etiqueta.textContent = nombre;
+        etiqueta.style.left = centro.x + '%';
+        etiqueta.style.top = centro.y + '%';
+      });
     }
 
     function irAEscena3(rutaImagen, nuevoTitulo, origenX, origenY, claseZonas) {
@@ -2092,9 +2172,16 @@
       }
     });
 
-    window.addEventListener('resize', ajustarMapaInteractivo);
-    window.addEventListener('orientationchange', ajustarMapaInteractivo);
+    window.addEventListener('resize', function () {
+      ajustarMapaInteractivo();
+      instalarEtiquetasMovilEdificios();
+    });
+    window.addEventListener('orientationchange', function () {
+      ajustarMapaInteractivo();
+      instalarEtiquetasMovilEdificios();
+    });
     mapImg.addEventListener('load', ajustarMapaInteractivo);
+    instalarEtiquetasMovilEdificios();
   </script>
 
   <!-- ══════════════════════════════════════════
