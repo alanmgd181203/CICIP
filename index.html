@@ -12,7 +12,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="cicip-build" content="20250602-render-movil-derecha">
+  <meta name="cicip-build" content="20250602-limpieza-minimapa">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="assets/imagen-portada.webp">
   <title>Exploración de Proyecto CICIP</title>
@@ -1315,8 +1315,28 @@
 
     function iniciarTransicionMapa() {
       document.body.classList.add('mapa-en-transicion');
+      ocultarInfo();
       ocultarEtiquetasMovilEdificios();
-      apagarTodasLasCamaras();
+      document.querySelectorAll(
+        '.camara-render, .camara-exterior, .camara-exterior-edificios, ' +
+        '.camara-exterior-edificio1, .camara-exterior-edificio2, .camara-exterior-edificio3'
+      ).forEach(function (el) {
+        el.style.display = 'none';
+        el.classList.remove('camara-activa');
+      });
+      document.querySelectorAll('.nav-escena-4, .flecha-salto-planta').forEach(function (el) {
+        el.style.display = 'none';
+      });
+      document.querySelectorAll(
+        '.botones-escena-1, .botones-escena-2, .botones-escena-3, .botones-escena-4, ' +
+        '.botones-escena-exterior, .botones-exterior-edificios, ' +
+        '.botones-exterior-edificio1, .botones-exterior-edificio2, .botones-exterior-edificio3'
+      ).forEach(function (el) {
+        el.style.display = 'none';
+      });
+      if (typeof ocultarModoExteriorEdificio === 'function') {
+        ocultarModoExteriorEdificio();
+      }
     }
 
     function terminarTransicionMapa() {
@@ -1338,7 +1358,11 @@
         mapImg.src = src;
         imagenEscenaActual = src;
         return esperarImagenElemento(mapImg).then(function () {
-          ajustarMapaInteractivo();
+          if (document.body.classList.contains('visor-render-abierto')) {
+            if (esVistaMovil()) fijarDimensionMinimapaRender();
+          } else {
+            ajustarMapaInteractivo();
+          }
         });
       });
     }
@@ -1365,9 +1389,23 @@
 
     function ajustarMapaInteractivo() {
       if (!mapaInteractivo) return;
+      if (document.body.classList.contains('visor-render-abierto')) {
+        if (esVistaMovil()) fijarDimensionMinimapaRender();
+        return;
+      }
       mapaInteractivo.style.width = '';
       mapaInteractivo.style.height = '';
       mapaInteractivo.style.maxWidth = '';
+    }
+
+    function fijarDimensionMinimapaRender() {
+      if (!esVistaMovil() || !document.body.classList.contains('visor-render-abierto')) return;
+      var mapContainer = document.querySelector('.map-container.modo-minimapa');
+      if (!mapContainer || !mapaInteractivo) return;
+      var ancho = mapContainer.clientWidth;
+      if (ancho < 1) return;
+      mapaInteractivo.style.width = ancho + 'px';
+      mapaInteractivo.style.maxWidth = ancho + 'px';
     }
 
     function extraerRutasOnclick(onclick) {
@@ -1555,8 +1593,7 @@
     }
 
     function ejecutarRegresoPlanta() {
-      ocultarInfo();
-      apagarTodasLasCamaras();
+      iniciarTransicionMapa();
       if (typeof accionRegresoPlanta === 'function') {
         accionRegresoPlanta();
         return;
@@ -1717,12 +1754,8 @@
 
     /* ── Escena Exterior (Planta Conjunto) ── */
     function irAEscenaExterior() {
-      ocultarInfo();
+      iniciarTransicionMapa();
       mostrarBtnRegresarPlanta(volverAInicio);
-
-      document.querySelectorAll('.botones-escena-1').forEach(function (btn) {
-        btn.style.display = 'none';
-      });
 
       overlay.style.opacity = '1';
 
@@ -1732,6 +1765,7 @@
         setTimeout(function () {
           overlay.style.opacity = '0';
           esperarOverlayOculto(function () {
+            terminarTransicionMapa();
             document.querySelectorAll('.botones-escena-exterior, .camara-exterior').forEach(function (btn) {
               btn.style.display = 'block';
             });
@@ -1743,13 +1777,8 @@
     }
 
     function volverAInicio() {
-      ocultarInfo();
-      apagarTodasLasCamaras();
+      iniciarTransicionMapa();
       ocultarBtnRegresarPlanta();
-
-      document.querySelectorAll('.botones-escena-exterior, .camara-exterior').forEach(function (btn) {
-        btn.style.display = 'none';
-      });
 
       overlay.style.opacity = '1';
 
@@ -1759,6 +1788,7 @@
         setTimeout(function () {
           overlay.style.opacity = '0';
           esperarOverlayOculto(function () {
+            terminarTransicionMapa();
             document.querySelectorAll('.botones-escena-1').forEach(function (btn) {
               btn.style.display = 'block';
             });
@@ -1770,12 +1800,8 @@
 
     /* ── Exterior de Edificios (Escena 2) ── */
     function irAExteriorEdificios() {
-      ocultarInfo();
+      iniciarTransicionMapa();
       mostrarBtnRegresarPlanta(volverAEdificios);
-
-      document.querySelectorAll('.botones-escena-2').forEach(function (btn) {
-        btn.style.display = 'none';
-      });
 
       overlay.style.opacity = '1';
 
@@ -1785,6 +1811,7 @@
         setTimeout(function () {
           overlay.style.opacity = '0';
           esperarOverlayOculto(function () {
+            terminarTransicionMapa();
             document.querySelectorAll('.botones-exterior-edificios, .camara-exterior-edificios').forEach(function (btn) {
               btn.style.display = 'block';
             });
@@ -1796,12 +1823,7 @@
     }
 
     function volverAEdificios() {
-      ocultarInfo();
-      apagarTodasLasCamaras();
-
-      document.querySelectorAll('.botones-exterior-edificios, .camara-exterior-edificios').forEach(function (btn) {
-        btn.style.display = 'none';
-      });
+      iniciarTransicionMapa();
 
       overlay.style.opacity = '1';
 
@@ -1811,6 +1833,7 @@
         setTimeout(function () {
           overlay.style.opacity = '0';
           esperarOverlayOculto(function () {
+            terminarTransicionMapa();
             document.querySelectorAll('.botones-escena-2').forEach(function (btn) {
               btn.style.display = 'block';
             });
@@ -1852,15 +1875,10 @@
     }
 
     function irAExteriorEdificio(n) {
-      ocultarEtiquetasMovilEdificios();
-      ocultarInfo();
+      iniciarTransicionMapa();
       mostrarBtnRegresarPlanta(volverAPlantaEdificio);
       edificioExteriorActivo = n;
       var cfg = EXTERIOR_EDIFICIO[n];
-
-      document.querySelectorAll('.botones-escena-3').forEach(function (btn) {
-        btn.style.display = 'none';
-      });
 
       overlay.style.opacity = '1';
 
@@ -1870,6 +1888,7 @@
         setTimeout(function () {
           overlay.style.opacity = '0';
           esperarOverlayOculto(function () {
+            terminarTransicionMapa();
             document.querySelectorAll(cfg.botones + ', ' + cfg.camaras).forEach(function (el) {
               el.style.display = 'block';
             });
@@ -1882,13 +1901,7 @@
 
     function volverAPlantaEdificio() {
       if (!edificioExteriorActivo) return;
-      ocultarInfo();
-      apagarTodasLasCamaras();
-      var cfg = EXTERIOR_EDIFICIO[edificioExteriorActivo];
-
-      document.querySelectorAll(cfg.botones + ', ' + cfg.camaras).forEach(function (el) {
-        el.style.display = 'none';
-      });
+      iniciarTransicionMapa();
 
       overlay.style.opacity = '1';
 
@@ -1898,6 +1911,7 @@
         setTimeout(function () {
           overlay.style.opacity = '0';
           esperarOverlayOculto(function () {
+            terminarTransicionMapa();
             mostrarBotonesEscena3();
             mostrarBtnRegresarPlanta(volverAEscena2);
             edificioExteriorActivo = 0;
@@ -1929,14 +1943,7 @@
       // Fijar punto de fuga hacia el centro del círculo rojo
       mapImg.style.transformOrigin = '64.82% 48.42%';
 
-      ocultarInfo();
-      apagarTodasLasCamaras();
       mostrarBtnRegresarPlanta(volverAEscena1);
-
-      // Ocultar botones de escena 1 de inmediato
-      document.querySelectorAll('.botones-escena-1').forEach(function (btn) {
-        btn.style.display = 'none';
-      });
 
       // a) Arrancar zoom de salida — el usuario lo ve libremente
       mapImg.classList.add('animacion-salir');
@@ -2181,13 +2188,7 @@
       // PRIMERA línea: fijar el punto de fuga antes de cualquier animación
       document.getElementById('mapa-principal').style.transformOrigin = origenX + ' ' + origenY;
 
-      ocultarInfo();
       mostrarBtnRegresarPlanta(volverAEscena2);
-
-      // Ocultar botones de escena 2 y 3 de inmediato
-      document.querySelectorAll('.botones-escena-2, .botones-escena-3').forEach(function (btn) {
-        btn.style.display = 'none';
-      });
 
       // a) Arrancar zoom de salida — el usuario lo ve libremente
       mapImg.classList.remove('animacion-salir', 'animacion-entrar', 'animacion-salir-e3', 'animacion-entrar-e3', 'animacion-entrar-regreso-e3');
@@ -2217,13 +2218,8 @@
 
     function volverAEscena2() {
       iniciarTransicionMapa();
-      ocultarInfo();
       resetearZoomPlanta();
       ocultarModoExteriorEdificio();
-      // Ocultar botones de escena 3 de inmediato
-      document.querySelectorAll('.botones-escena-3').forEach(function (btn) {
-        btn.style.display = 'none';
-      });
 
       // Resetear transform-origin para que el zoom de regreso quede centrado
       mapImg.style.transformOrigin = '50% 50%';
@@ -2250,13 +2246,7 @@
 
     function volverAEscena1() {
       iniciarTransicionMapa();
-      ocultarInfo();
       ocultarBtnRegresarPlanta();
-
-      // Ocultar botones de escena 2 de inmediato
-      document.querySelectorAll('.botones-escena-2').forEach(function (btn) {
-        btn.style.display = 'none';
-      });
 
       activarCortinaCarga();
 
@@ -2300,12 +2290,7 @@
     function saltoLateral(rutaImagen, nuevoTitulo, flechaOcultar, flechaMostrar, rutaImagen2) {
       iniciarTransicionMapa();
       cerrarRender();
-      ocultarInfo();
-      apagarTodasLasCamaras();
       mostrarBtnRegresarPlanta(volverAEscena3);
-      document.querySelectorAll('.nav-escena-4, .flecha-salto-planta').forEach(function (el) {
-        el.style.display = 'none';
-      });
       mapImg.style.transform = '';
       const zoomPlanta = getZoomPlanta(rutaImagen, nuevoTitulo);
       if (!zoomPlanta) resetearZoomPlanta();
@@ -2458,15 +2443,27 @@
     });
 
     window.addEventListener('resize', function () {
+      if (document.body.classList.contains('visor-render-abierto')) {
+        if (esVistaMovil()) fijarDimensionMinimapaRender();
+        return;
+      }
       ajustarMapaInteractivo();
       instalarEtiquetasMovilEdificios();
     });
     window.addEventListener('orientationchange', function () {
+      if (document.body.classList.contains('visor-render-abierto')) {
+        if (esVistaMovil()) fijarDimensionMinimapaRender();
+        return;
+      }
       ajustarMapaInteractivo();
       instalarEtiquetasMovilEdificios();
     });
     mapImg.addEventListener('load', function () {
-      ajustarMapaInteractivo();
+      if (document.body.classList.contains('visor-render-abierto')) {
+        if (esVistaMovil()) fijarDimensionMinimapaRender();
+      } else {
+        ajustarMapaInteractivo();
+      }
       instalarEtiquetasMovilEdificios();
     });
     instalarEtiquetasMovilEdificios();
