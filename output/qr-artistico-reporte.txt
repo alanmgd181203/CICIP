@@ -1,0 +1,26 @@
+QR ARTISTICO — PROYECTO CICIP
+========================================
+URL codificada: https://cicip.netlify.app/
+Matriz: 33x33 (1089 modulos)
+Negros con imagen: 336
+Blancos (sin imagen): 753
+Assets en catalogo: 210
+Assets distintos en celdas negras: 210
+Assets con repeticion: 126
+
+Top 15 imagenes mas repetidas:
+    2x  Planta Conjunto.webp
+    2x  planta-edificios.webp
+    2x  edificio1.webp
+    2x  edificio2.webp
+    2x  edificio3.webp
+    2x  imagen-portada.webp
+    2x  imagen-0.webp
+    2x  imagen-1.webp
+    2x  imagen-2.webp
+    2x  imagen-4.webp
+    2x  imagen-5.webp
+    2x  imagen-6.webp
+    2x  imagen-7.webp
+    2x  imagen-8.webp
+    2x  imagen-9.webp

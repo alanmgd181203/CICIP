@@ -1,0 +1,2889 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta property="og:title" content="Proyecto CICIP | Recorrido Virtual">
+  <meta property="og:description" content="Exploración interactiva del proyecto arquitectónico. Navega por las plantas, exteriores y vistas 3D.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="assets/imagen-portada.webp">
+  <meta name="description" content="Recorrido virtual interactivo del proyecto arquitectónico CICIP.">
+  <meta name="theme-color" content="#0a0a0a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="CICIP">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="assets/imagen-portada.webp">
+  <title>Exploración de Proyecto CICIP</title>
+  <link rel="preload" as="image" href="assets/Planta Conjunto.webp" type="image/webp">
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #1a1a1a;
+      color: #ffffff;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* ── Overlay de oscurecimiento ── */
+    #overlay-oscuro {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: black;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #loader-escena {
+      display: none;
+      width: 44px;
+      height: 44px;
+      border: 3px solid rgba(255, 255, 255, 0.15);
+      border-top-color: #ffffff;
+      border-radius: 50%;
+      animation: girar 0.9s linear infinite;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: clamp(1.4rem, 3vw, 2.2rem);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      margin: 32px 0;
+      color: #f0f0f0;
+    }
+
+    #contenedor-encabezado {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+      width: 100%;
+      position: relative;
+      z-index: 250;
+      pointer-events: none;
+    }
+
+    #contenedor-encabezado h1 {
+      margin: 32px 0;
+    }
+
+    #contenedor-encabezado h1,
+    #btn-regresar-planta {
+      pointer-events: auto;
+    }
+
+    #btn-regresar-planta {
+      display: none;
+      flex-shrink: 0;
+      background: rgba(0, 0, 0, 0.6);
+      color: white;
+      border: 2px solid white;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      cursor: pointer;
+      font-size: 18px;
+      transition: all 0.2s;
+      position: relative;
+      z-index: 251;
+    }
+
+    /* Ocultos en escritorio; solo móvil ≤900px */
+    #btn-menu-movil,
+    #fondo-menu-movil,
+    #hotspot-tooltip-movil {
+      display: none;
+    }
+
+    #btn-regresar-planta:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: scale(1.1);
+    }
+
+    .map-container {
+      position: relative;
+      width: 100%;
+      overflow: visible;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    .mapa-interactivo {
+      position: relative;
+      width: 100%;
+      max-width: 100%;
+      flex-shrink: 0;
+    }
+
+    .mapa-interactivo > #mapa-principal,
+    .mapa-interactivo > #mapa-secundario {
+      display: block;
+      width: 100%;
+      height: auto;
+      vertical-align: top;
+    }
+
+    .mapa-interactivo > #mapa-principal {
+      cursor: crosshair;
+    }
+
+    .mapa-interactivo > #mapa-secundario {
+      display: none;
+    }
+
+    .mapa-interactivo > .nav-escena-4,
+    .mapa-interactivo > [class*="botones-"],
+    .mapa-interactivo > [class*="camara-"],
+    .mapa-interactivo > [id^="camara-"],
+    .mapa-interactivo > [id^="nav-"] {
+      position: absolute;
+    }
+
+    body.sin-herramienta-coords .mapa-interactivo > #mapa-principal {
+      cursor: default;
+    }
+
+    body.sin-herramienta-coords .herramienta-coordenadas-exterior {
+      cursor: default;
+    }
+
+    #btn-editor.bloqueado-dev {
+      opacity: 0.45;
+      cursor: not-allowed;
+      color: #666 !important;
+      border-color: #444 !important;
+    }
+
+    /* ── Animaciones cinemáticas ── */
+    @keyframes zoom-salir {
+      from { opacity: 1; transform: scale(1); }
+      to   { opacity: 0; transform: scale(4); }
+    }
+
+    @keyframes zoom-entrar {
+      from { opacity: 0; transform: scale(2); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    .animacion-salir  { animation: zoom-salir  2.4s ease-in  forwards; }
+    .animacion-entrar { animation: zoom-entrar 2.4s ease-out forwards; }
+
+    /* ── Etiquetas de navegación estilo señalética ── */
+    .etiqueta-navegacion {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      background-color: rgba(20, 20, 20, 0.78);
+      color: #e8e8e8;
+      padding: 7px 16px 7px 12px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      pointer-events: none;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .etiqueta-navegacion::before {
+      content: '›';
+      font-size: 16px;
+      font-weight: bold;
+      color: #aaa;
+      line-height: 1;
+    }
+
+    /* ── Animaciones específicas para Escena 3 ── */
+    @keyframes zoom-entrar-escena3 {
+      from { opacity: 0; transform: scale(1.3); }
+      to   { opacity: 1; transform: scale(1);   }
+    }
+
+    /* Regreso desde Escena 3: menos escala, misma duración */
+    @keyframes zoom-entrar-regreso-e3 {
+      from { opacity: 0; transform: scale(1.12); }
+      to   { opacity: 1; transform: scale(1);    }
+    }
+
+    .animacion-salir-e3        { animation: zoom-salir            3.0s ease-in  forwards; }
+    .animacion-entrar-e3       { animation: zoom-entrar-escena3   2.2s ease-out forwards; }
+    .animacion-entrar-regreso-e3 { animation: zoom-entrar-regreso-e3 2.4s ease-out forwards; }
+
+    /* ── Botón catch-all — cubre toda la imagen ── */
+    .btn-catchall-escena-1 {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 5;
+      cursor: pointer;
+    }
+
+    /* ── Panel HUD de información ── */
+    #panel-info {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      background-color: rgba(0, 0, 0, 0.75);
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-family: sans-serif;
+      font-size: 18px;
+      font-weight: bold;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+      z-index: 200;
+      box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.5);
+    }
+
+    /* ── Botón círculo principal ── */
+    .area-edificio-circular-1 {
+      position: absolute;
+      top: 11.16%;
+      left: 43.86%;
+      width: 41.92%;
+      height: 74.52%;
+      border-radius: 50%;
+      z-index: 20;
+      cursor: pointer;
+    }
+
+    /* Zonas interactivas con iluminación premium sin alterar geometría */
+    .zona-interactiva {
+      background-color: transparent !important;
+      border: none !important;
+      transition: background-color 0.2s ease, backdrop-filter 0.2s ease !important;
+      cursor: pointer;
+    }
+    .zona-interactiva:hover {
+      background-color: rgba(255, 255, 255, 0.1) !important;
+      backdrop-filter: brightness(1.15) contrast(1.05) !important;
+    }
+
+    /* Botones grises de navegación con contorno (Drop Shadow) */
+    .nav-escena-4 {
+      background-color: rgba(128, 128, 128, 0.4) !important;
+      filter: drop-shadow(0px 0px 2px rgba(255, 255, 255, 0.4)) !important;
+      transition: background-color 0.2s ease, filter 0.2s ease, backdrop-filter 0.2s ease !important;
+    }
+    .nav-escena-4:hover {
+      background-color: rgba(200, 200, 200, 0.5) !important;
+      filter: drop-shadow(0px 0px 5px rgba(255, 255, 255, 0.9)) !important;
+      backdrop-filter: brightness(1.2) contrast(1.1) !important;
+    }
+
+    #etiqueta-visor-render {
+      position: absolute;
+      bottom: 40px;
+      right: 40px;
+      top: auto;
+      left: auto;
+      background: rgba(0, 0, 0, 0.65);
+      color: white;
+      padding: 16px 32px;
+      border-radius: 8px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-size: 22px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      z-index: 2;
+      border-right: 4px solid #ffffff;
+      backdrop-filter: blur(5px);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    }
+
+    /* ── Círculo verde Escena 2 ── */
+    .area-circulo-edificios-2 {
+      position: absolute;
+      top: 7.83%;
+      left: 14.82%;
+      width: 66.22%;
+      height: 83.38%;
+      border-radius: 50%;
+    }
+
+    .btn-catchall-edificios-2 {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .btn-catchall-edificio-planta {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .bloqueo-regreso-interior {
+      pointer-events: auto;
+    }
+
+    .herramienta-coordenadas-exterior {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 55;
+      cursor: crosshair;
+      pointer-events: auto;
+    }
+    .camara-render {
+      display: none;
+      position: absolute;
+      width: 64px;
+      height: 64px;
+      cursor: pointer;
+      z-index: 60;
+      transition: all 0.2s ease;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8));
+    }
+    .camara-exterior,
+    .camara-exterior-edificios,
+    .camara-exterior-edificio1,
+    .camara-exterior-edificio2,
+    .camara-exterior-edificio3 {
+      display: none;
+      z-index: 60;
+    }
+    /* Vestíbulo Ed.3: iconos a mitad de tamaño (planta con zoom ×2) */
+    .camara-render[id^="camara-vestibulo3-"] {
+      width: 32px;
+      height: 32px;
+    }
+    .camara-render[id^="camara-vestibulo1-"] {
+      width: 32px;
+      height: 32px;
+    }
+    .camara-render:hover { transform: scale(1.2); }
+
+    .camara-activa {
+      filter: drop-shadow(0 0 15px #00ffcc) brightness(1.5);
+      transform: scale(1.3);
+      z-index: 65;
+    }
+
+    /* Aviso de rotación — solo celular en vertical (activado por JS) */
+    #bloqueo-rotacion {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background-color: #0d0d0d;
+      color: white;
+      z-index: 99998;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: clamp(20px, 6vw, 40px);
+      gap: 12px;
+    }
+
+    #bloqueo-rotacion.activo {
+      display: flex;
+    }
+
+    #bloqueo-rotacion svg {
+      width: clamp(64px, 18vw, 88px);
+      height: clamp(64px, 18vw, 88px);
+      animation: rotarCelular 2s infinite ease-in-out;
+    }
+
+    #bloqueo-rotacion h2 {
+      font-size: clamp(1.1rem, 4.5vw, 1.5rem);
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      margin: 8px 0 0;
+    }
+
+    #bloqueo-rotacion p {
+      font-size: clamp(0.85rem, 3.5vw, 1rem);
+      font-weight: 300;
+      color: rgba(255, 255, 255, 0.72);
+      max-width: 28ch;
+      line-height: 1.5;
+    }
+
+    @keyframes rotarCelular {
+      0% { transform: rotate(0deg); }
+      50% { transform: rotate(-90deg); }
+      100% { transform: rotate(-90deg); }
+    }
+
+    /* ── Mapa flotante (overlay universal) ── */
+    #fondo-mapa-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.62);
+      z-index: 320;
+      backdrop-filter: blur(4px);
+    }
+
+    body.mapa-desplegado #fondo-mapa-overlay {
+      display: block;
+    }
+
+    #mapa-overlay-panel {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.96);
+      width: min(94vw, 1200px);
+      max-height: 88vh;
+      z-index: 340;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.35s ease, transform 0.35s ease, visibility 0.35s;
+      background: rgba(14, 14, 14, 0.97);
+      border: 1.5px solid rgba(255, 255, 255, 0.18);
+      border-radius: clamp(10px, 2vw, 16px);
+      padding: clamp(10px, 2.5vw, 18px);
+      overflow: auto;
+      box-shadow: 0 20px 56px rgba(0, 0, 0, 0.75);
+    }
+
+    body.mapa-desplegado #mapa-overlay-panel {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    #btn-cerrar-mapa-overlay {
+      position: absolute;
+      top: clamp(8px, 2vw, 12px);
+      right: clamp(8px, 2vw, 12px);
+      z-index: 10;
+      width: clamp(32px, 8vw, 40px);
+      height: clamp(32px, 8vw, 40px);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.55);
+      color: white;
+      font-size: clamp(14px, 3.5vw, 18px);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s ease;
+    }
+
+    #btn-cerrar-mapa-overlay:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    #mapa-overlay-panel .mapa-interactivo > #mapa-principal,
+    #mapa-overlay-panel .mapa-interactivo > #mapa-secundario {
+      width: 100%;
+      height: auto;
+      max-height: calc(88vh - 56px);
+      object-fit: contain;
+    }
+
+    .mapa-interactivo.mapa-dual > #mapa-principal,
+    .mapa-interactivo.mapa-dual > #mapa-secundario {
+      max-height: calc(44vh - 28px);
+    }
+
+    #btn-flotante-plano {
+      display: flex;
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 360;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(255, 255, 255, 0.55);
+      background: rgba(0, 0, 0, 0.5);
+      color: white;
+      font-size: clamp(18px, 4.5vw, 24px);
+      line-height: 1;
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+      transition: background 0.25s ease, transform 0.2s ease;
+      pointer-events: auto;
+    }
+
+    #btn-flotante-plano:hover {
+      background: rgba(30, 30, 30, 0.75);
+      transform: scale(1.05);
+    }
+
+    /* Botón pantalla completa */
+    #btn-pantalla-completa {
+      position: fixed;
+      bottom: 78px;
+      right: 20px;
+      z-index: 360;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 6px;
+      background: rgba(12, 12, 12, 0.55);
+      color: rgba(255, 255, 255, 0.55);
+      font-family: inherit;
+      font-size: 15px;
+      line-height: 1;
+      cursor: pointer;
+      backdrop-filter: blur(6px);
+      transition: color 0.3s ease, border-color 0.3s ease, background 0.3s ease, opacity 0.3s ease;
+    }
+
+    #btn-pantalla-completa:hover:not(:disabled) {
+      color: rgba(255, 255, 255, 0.9);
+      border-color: rgba(255, 255, 255, 0.38);
+      background: rgba(20, 20, 20, 0.72);
+    }
+
+    #btn-pantalla-completa:focus-visible {
+      outline: 1px solid rgba(255, 255, 255, 0.4);
+      outline-offset: 2px;
+    }
+
+    #btn-pantalla-completa.activado {
+      color: rgba(255, 255, 255, 0.35);
+      border-color: rgba(255, 255, 255, 0.1);
+      cursor: default;
+    }
+
+    body.carga-inicial-bloqueada #btn-pantalla-completa,
+    body.carga-inicial-bloqueada #btn-flotante-plano {
+      display: none;
+    }
+
+    /* Invitación en splash (visible en ambos durante la precarga) */
+    #btn-pantalla-completa-splash {
+      margin-top: 28px;
+      padding: 12px 26px;
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      color: rgba(255, 255, 255, 0.82);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 300;
+      letter-spacing: 1.2px;
+      line-height: 1.5;
+      cursor: pointer;
+      border-radius: 2px;
+      transition: border-color 0.35s ease, color 0.35s ease, background 0.35s ease;
+      max-width: min(92vw, 360px);
+      text-align: center;
+    }
+
+    #btn-pantalla-completa-splash:hover:not(:disabled) {
+      border-color: rgba(255, 255, 255, 0.5);
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    #btn-pantalla-completa-splash:focus-visible {
+      outline: 1px solid rgba(255, 255, 255, 0.45);
+      outline-offset: 3px;
+    }
+
+    #btn-pantalla-completa-splash.activado {
+      border-color: rgba(255, 255, 255, 0.12);
+      color: rgba(255, 255, 255, 0.48);
+      cursor: default;
+      background: transparent;
+    }
+
+    #visor-pantalla-completa {
+      z-index: 300;
+    }
+
+    body.carga-inicial-bloqueada {
+      overflow: hidden;
+    }
+
+    body.carga-inicial-bloqueada #mapa-overlay-panel,
+    body.carga-inicial-bloqueada #contenedor-encabezado,
+    body.carga-inicial-bloqueada #panel-info {
+      pointer-events: none;
+    }
+
+    /* Splash Screen Inicial */
+    #splash-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: #0a0a0a;
+      z-index: 99999;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      transition: opacity 0.8s ease-out, visibility 0.8s ease-out;
+      pointer-events: all;
+    }
+
+    #splash-progreso {
+      color: rgba(255, 255, 255, 0.45);
+      margin-top: 12px;
+      font-size: 13px;
+      font-weight: 300;
+      letter-spacing: 1px;
+    }
+
+    .loader-arquitectonico {
+      width: 50px;
+      height: 50px;
+      border: 3px solid rgba(255, 255, 255, 0.1);
+      border-top-color: #ffffff;
+      border-radius: 50%;
+      animation: girar 1s linear infinite;
+    }
+    @keyframes girar {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Spinner del Render */
+    .spinner-circulo {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(255, 255, 255, 0.2);
+      border-top-color: #ffffff;
+      border-radius: 50%;
+      animation: girar 1s linear infinite;
+    }
+
+    /* ══════════════════════════════════════════
+       MÓVIL ≤900px — aislado; escritorio sin cambios
+       ══════════════════════════════════════════ */
+    @media only screen and (max-width: 900px) {
+      body {
+        overflow: hidden;
+        height: 100dvh;
+        max-height: 100dvh;
+      }
+
+      body.carga-inicial-bloqueada {
+        overflow: hidden;
+      }
+
+      /* Header lateral + hamburguesa */
+      #btn-menu-movil {
+        display: flex;
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        z-index: 400;
+        width: 44px;
+        height: 44px;
+        border: 2px solid rgba(255, 255, 255, 0.65);
+        border-radius: 10px;
+        background: rgba(0, 0, 0, 0.72);
+        color: white;
+        font-size: 20px;
+        cursor: pointer;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(6px);
+        pointer-events: auto;
+      }
+
+      #fondo-menu-movil {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.45);
+        z-index: 380;
+      }
+
+      body.menu-abierto #fondo-menu-movil {
+        display: block;
+      }
+
+      #contenedor-encabezado {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: min(280px, 82vw);
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: flex-start;
+        padding: 58px 16px 16px;
+        margin: 0;
+        gap: 12px;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        background: rgba(8, 8, 8, 0.96);
+        border-right: 1px solid rgba(255, 255, 255, 0.15);
+        box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
+        pointer-events: auto;
+        z-index: 390;
+      }
+
+      #contenedor-encabezado.menu-abierto {
+        transform: translateX(0);
+      }
+
+      #contenedor-encabezado h1 {
+        font-size: 14px;
+        margin: 0;
+        text-align: left;
+        line-height: 1.35;
+        width: 100%;
+        font-weight: 400;
+        letter-spacing: 0.06em;
+      }
+
+      #btn-regresar-planta {
+        position: fixed;
+        top: 10px;
+        left: 62px;
+        width: 44px;
+        height: 44px;
+        font-size: 16px;
+        z-index: 399;
+      }
+
+      #btn-editor {
+        top: 10px !important;
+        right: 10px !important;
+        left: auto !important;
+      }
+
+      /* Plano: solo overlay 80%, nunca encimado al render */
+      #fondo-mapa-overlay {
+        background: rgba(0, 0, 0, 0.55);
+      }
+
+      body.render-activo.mapa-desplegado #fondo-mapa-overlay {
+        background: rgba(0, 0, 0, 0.28);
+        backdrop-filter: blur(2px);
+      }
+
+      #mapa-overlay-panel {
+        width: 80vw;
+        max-width: 80vw;
+        max-height: 80vh;
+        padding: 10px;
+        overflow: auto;
+      }
+
+      #mapa-overlay-panel .mapa-interactivo > #mapa-principal,
+      #mapa-overlay-panel .mapa-interactivo > #mapa-secundario {
+        width: 100%;
+        height: auto;
+        max-height: calc(80vh - 48px);
+        object-fit: contain;
+      }
+
+      .mapa-interactivo.mapa-dual > #mapa-principal,
+      .mapa-interactivo.mapa-dual > #mapa-secundario {
+        max-height: calc(40vh - 28px);
+      }
+
+      /* Render y plantas: contenido completo sin scroll */
+      body.render-activo #visor-pantalla-completa {
+        display: flex !important;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+
+      #imagen-render-activa {
+        width: 100% !important;
+        height: auto !important;
+        max-height: 85vh !important;
+        object-fit: contain !important;
+      }
+
+      #etiqueta-visor-render {
+        font-size: 11px;
+        padding: 6px 12px;
+        bottom: 16px;
+        right: 16px;
+        border-right-width: 2px;
+      }
+
+      /* Hotspots discretos en plantas de edificios */
+      .hotspot-zona-movil {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.92);
+        border: 2px solid rgba(0, 180, 160, 0.85);
+        box-shadow: 0 0 0 3px rgba(0, 180, 160, 0.25), 0 2px 6px rgba(0, 0, 0, 0.55);
+        z-index: 36;
+        pointer-events: auto;
+        cursor: pointer;
+      }
+
+      .hotspot-zona-movil.activo {
+        background: rgba(0, 220, 190, 1);
+        transform: translate(-50%, -50%) scale(1.2);
+      }
+
+      #hotspot-tooltip-movil {
+        display: none;
+        position: fixed;
+        z-index: 420;
+        max-width: min(70vw, 220px);
+        padding: 8px 12px;
+        background: rgba(12, 12, 12, 0.94);
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        border-radius: 8px;
+        color: #f2f2f2;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        text-align: center;
+        line-height: 1.3;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+        pointer-events: none;
+      }
+
+      #hotspot-tooltip-movil.visible {
+        display: block;
+      }
+
+      .camara-render,
+      .camara-exterior,
+      .camara-exterior-edificios,
+      .camara-exterior-edificio1,
+      .camara-exterior-edificio2,
+      .camara-exterior-edificio3 {
+        width: 48px !important;
+        height: 48px !important;
+        min-width: 48px;
+        min-height: 48px;
+      }
+
+      .camara-render[id^="camara-vestibulo3-"],
+      .camara-render[id^="camara-vestibulo1-"] {
+        width: 40px !important;
+        height: 40px !important;
+      }
+
+      .zona-interactiva:hover,
+      .nav-escena-4:hover,
+      .camara-render:hover {
+        background-color: transparent !important;
+        backdrop-filter: none !important;
+        transform: none !important;
+        filter: none !important;
+      }
+
+      #btn-flotante-plano {
+        bottom: 18px;
+        right: 18px;
+        width: 48px;
+        height: 48px;
+      }
+
+      #btn-pantalla-completa {
+        bottom: 74px;
+        right: 18px;
+        width: 40px;
+        height: 40px;
+      }
+
+      #panel-info {
+        bottom: 16px;
+        right: 16px;
+        font-size: 13px;
+        padding: 8px 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="splash-screen">
+    <div class="loader-arquitectonico"></div>
+    <h2 style="color: white; margin-top: 20px; font-weight: 300; letter-spacing: 3px;">CARGANDO PROYECTO...</h2>
+    <p id="splash-progreso">Preparando recorrido virtual...</p>
+    <button type="button" id="btn-pantalla-completa-splash">Ver en pantalla completa para mejor experiencia</button>
+  </div>
+
+  <button type="button" id="btn-pantalla-completa" aria-label="Pantalla completa" title="Pantalla completa">⛶</button>
+
+  <div id="bloqueo-rotacion" aria-live="polite">
+    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+      <line x1="12" y1="18" x2="12.01" y2="18"></line>
+    </svg>
+    <h2>Gira tu dispositivo</h2>
+    <p>Para explorar las plantas con comodidad, usa el celular en horizontal.</p>
+  </div>
+
+  <div id="visor-pantalla-completa" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #000;">
+    <img id="imagen-render-activa" style="width: 100%; height: 100%; object-fit: contain; opacity: 0; transition: opacity 0.4s ease;" src="" alt="Render 3D">
+
+    <div id="spinner-render" style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); z-index: 1;">
+      <div class="spinner-circulo"></div>
+    </div>
+
+    <!-- Nueva etiqueta de espacio -->
+    <div id="etiqueta-visor-render">VISTA 3D</div>
+
+    <button id="btn-cerrar-visor" onclick="navegarAtras()" style="position: absolute; top: 20px; right: 30px; font-size: 30px; background: rgba(0,0,0,0.5); color: white; border: none; border-radius: 50%; width: 50px; height: 50px; cursor: pointer; z-index: 2;">✖</button>
+  </div>
+
+  <button id="btn-flotante-plano" type="button" onclick="toggleMapaOverlay()" aria-label="Ver mapa" title="Ver mapa">🗺</button>
+
+  <button id="btn-menu-movil" type="button" onclick="toggleMenuMovil()" aria-label="Abrir menú" title="Menú">☰</button>
+  <div id="fondo-menu-movil" onclick="cerrarMenuMovil()"></div>
+  <div id="hotspot-tooltip-movil" aria-live="polite"></div>
+
+  <div id="overlay-oscuro">
+    <div id="loader-escena"></div>
+  </div>
+
+  <div id="fondo-mapa-overlay" onclick="cerrarMapaOverlay()"></div>
+
+  <div id="contenedor-encabezado">
+    <button id="btn-regresar-planta"
+            onclick="navegarAtras()"
+            title="Regresar (Esc)">
+      ⬅
+    </button>
+
+    <h1 id="titulo-principal">Exploración de Proyecto CICIP</h1>
+  </div>
+
+  <div id="mapa-overlay-panel">
+    <button type="button" id="btn-cerrar-mapa-overlay" onclick="cerrarMapaOverlay()" aria-label="Cerrar mapa" title="Cerrar mapa">✕</button>
+  <div class="map-container">
+    <div id="mapa-interactivo" class="mapa-interactivo">
+    <img id="mapa-principal" src="assets/Planta Conjunto.webp" alt="Planta Conjunto CICIP" />
+    <img id="mapa-secundario" src="" alt="" style="display:none;" />
+
+    <!-- Catch-all: cubre toda la imagen, z-index 5 -->
+    <div class="botones-escena-1 btn-catchall-escena-1"
+         onclick="irAEscenaExterior()"
+         onmouseenter="mostrarInfo('Explorar Exterior')"
+         onmouseleave="ocultarInfo()"></div>
+
+    <!-- Círculo edificio circular 1, z-index 20, navega a escena 2 -->
+    <div class="botones-escena-1 area-edificio-circular-1 zona-interactiva"
+         onclick="irAEscena2()"
+         onmouseenter="mostrarInfo('Zona de Edificios')"
+         onmouseleave="ocultarInfo()"></div>
+
+    <!-- Escena Exterior: tinte gris (solo visual) -->
+    <div class="botones-escena-exterior btn-catchall-escena-1"
+         style="display:none; z-index:10; pointer-events:none; border: 2px solid gray; background-color: rgba(128, 128, 128, 0.3);"></div>
+    <!-- Escena Exterior: coordenadas (doble clic afuera del círculo = regresar) -->
+    <div class="botones-escena-exterior herramienta-coordenadas-exterior"
+         style="display:none;"
+         onclick="clicExteriorConjunto(event)"></div>
+
+    <!-- Escena 2: botón de regreso (catch-all), z-index 10 -->
+    <div class="botones-escena-2"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:10; cursor:pointer"
+         onclick="volverAEscena1()"
+         onmouseenter="mostrarInfo('Planta Conjunto')"
+         onmouseleave="ocultarInfo()"></div>
+
+    <!-- Escena 2: círculo verde — entrar a exploración exterior -->
+    <div class="botones-escena-2 area-circulo-edificios-2 zona-interactiva"
+         style="display:none; position:absolute; z-index:20; cursor:pointer"
+         onclick="irAExteriorEdificios()"
+         onmouseenter="mostrarInfo('Explorar Exterior Edificios')"
+         onmouseleave="ocultarInfo()"></div>
+
+    <!-- Escena 2: tinte gris exterior (solo visual) -->
+    <div class="botones-exterior-edificios btn-catchall-edificios-2"
+         style="display:none; z-index:10; pointer-events:none; border:2px solid gray; background-color:rgba(128,128,128,0.3);"></div>
+    <!-- Escena 2 exterior: coordenadas (doble clic afuera del círculo = regresar) -->
+    <div class="botones-exterior-edificios herramienta-coordenadas-exterior"
+         style="display:none;"
+         onclick="clicExteriorEdificios(event)"></div>
+
+    <!-- Escena 2: Edificio Derecho -->
+    <div class="botones-escena-2 zona-interactiva"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:20; cursor:pointer; clip-path:ellipse(14.28% 16.70% at 65.19% 38.18%)"
+         onclick="irAEscena3('assets/edificio1.webp', 'Edificio 1', '65.19%', '38.18%', 'zonas-edificio-1')"
+         onmouseenter="mostrarInfo('Edificio 1')"
+         onmouseleave="ocultarInfo()"></div>
+
+    <!-- Escena 2: Edificio Inferior -->
+    <div class="botones-escena-2 zona-interactiva"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:20; cursor:pointer; clip-path:ellipse(14.43% 17.11% at 50.03% 73.43%)"
+         onclick="irAEscena3('assets/edificio3.webp', 'Edificio 3', '50.03%', '73.43%', 'zonas-edificio-3')"
+         onmouseenter="mostrarInfo('Edificio 3')"
+         onmouseleave="ocultarInfo()"></div>
+
+    <!-- Escena 2: Edificio Izquierdo -->
+    <div class="botones-escena-2 zona-interactiva"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:20; cursor:pointer; clip-path:ellipse(13.89% 17.93% at 31.87% 36.96%)"
+         onclick="irAEscena3('assets/edificio2.webp', 'Edificio 2', '31.87%', '36.96%', 'zonas-edificio-2')"
+         onmouseenter="mostrarInfo('Edificio 2')"
+         onmouseleave="ocultarInfo()"></div>
+
+    <!-- Escena 3: catch-all base, z-index 10 -->
+    <div class="botones-escena-3"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:10; pointer-events:auto; cursor:pointer"
+         onclick="volverAEscena2()"
+         onmouseenter="mostrarInfo('Edificios')"
+         onmouseleave="ocultarInfo()"></div>
+
+
+    <!-- Escena 4: herramienta coordenadas (candado: HERRAMIENTAS_DEV.coordenadasPorClic) -->
+    <div class="botones-escena-4"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:10; pointer-events:none; cursor:default;"
+         onclick="mostrarCoordenadas(event)"></div>
+
+    <!-- Edificio 1 — Capa Fondo (Regresar), z-index 10 — DESACTIVADO -->
+    <div class="botones-escena-3 zonas-edificio-1"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:10; pointer-events:auto; cursor:pointer"
+         onclick="volverAEscena2()"
+         onmouseenter="mostrarInfo('Edificios')"
+         onmouseleave="ocultarInfo()"></div>
+
+    <!-- Edificio 1 — Archivo, z-index 30 — DESACTIVADO -->
+    <div class="botones-escena-3 zonas-edificio-1 zona-interactiva"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:30; pointer-events:auto; cursor:pointer; clip-path:polygon(28.74% 65.99%, 19.26% 65.99%, 28.61% 77.69%)"
+         onmouseenter="mostrarInfo('Archivo')"
+         onmouseleave="ocultarInfo()"
+         onclick="irAEscena4('assets/imagen-0.webp', 'Archivo', '26%', '70%', null, null, 'nav-archivo-a-territorial camara-archivo1-67')"></div>
+
+    <!-- Edificio 1 — Análisis Territorial, z-index 30 — DESACTIVADO -->
+    <div class="botones-escena-3 zonas-edificio-1 zona-interactiva"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:30; pointer-events:auto; cursor:pointer; clip-path:polygon(19.20% 54.44%, 28.74% 54.44%, 28.68% 66.07%, 19.26% 66.07%)"
+         onmouseenter="mostrarInfo('Análisis Territorial')"
+         onmouseleave="ocultarInfo()"
+         onclick="irAEscena4('assets/imagen-1.webp', 'Análisis Territorial', '24%', '60%', null, null, 'nav-territorial-a-archivo nav-territorial-a-limpieza camara-territorial1-65 camara-territorial1-66')"></div>
+
+    <!-- Edificio 1 — Cuarto de Limpieza y Almacén, z-index 30 — DESACTIVADO -->
+    <div class="botones-escena-3 zonas-edificio-1 zona-interactiva"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:30; pointer-events:auto; cursor:pointer; clip-path:polygon(28.68% 54.29%, 28.68% 45.97%, 25.21% 46.04%, 25.03% 42.82%, 19.32% 42.74%, 19.26% 54.44%)"
+         onmouseenter="mostrarInfo('Cuarto de Limpieza y Almacén')"
+         onmouseleave="ocultarInfo()"
+         onclick="irAEscena4('assets/imagen-2.webp', 'Cuarto de Limpieza y Almacén', '24%', '48%', null, null, 'nav-limpieza-a-vestibulo nav-limpieza-a-areacomun nav-limpieza-a-territorial')"></div>
+
+    <!-- Edificio 1 — Cocineta, z-index 30 — DESACTIVADO -->
+    <div class="botones-escena-3 zonas-edificio-1 zona-interactiva"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:30; pointer-events:auto; cursor:pointer; clip-path:polygon(22.25% 39.16%, 28.71% 31.20%, 28.65% 39.30%)"
+         onmouseenter="mostrarInfo('Cocineta')"
+         onmouseleave="ocultarInfo()"
+         onclick="irAEscena4('assets/imagen-4.webp', 'Cocineta', '27%', '37%', null, null, 'nav-cocineta-a-areacomun nav-cocineta-a-vestibulo camara-cocineta1-60 camara-cocineta1-61')"></div>
+
+    <!-- Edificio 1 — Área Común y Descanso, z-index 30 — DESACTIVADO -->
+    <div class="botones-escena-3 zonas-edificio-1 zona-interactiva"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:30; pointer-events:auto; cursor:pointer; clip-path:polygon(38.17% 19.57%, 38.11% 42.79%, 28.65% 42.72%, 28.65% 31.18%)"
+         onmouseenter="mostrarInfo('Área Común y Descanso')"
+         onmouseleave="ocultarInfo()"
+         onclick="irAEscena4('assets/imagen-5.webp', 'Área Común y Descanso', '33%', '34%', null, null, 'nav-areacomun-a-cocineta nav-areacomun-a-cantera nav-areacomun-a-vestibulo camara-areacomun1-58 camara-areacomun1-59 camara-areacomun1-62')"></div>
+
+    <!-- Edificio 1 — Lab Cantera, z-index 30 -->
+    <div class="botones-escena-3 zonas-edificio-1 zona-interactiva"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:30; pointer-events:auto; cursor:pointer; clip-path:polygon(38.11% 19.57%, 38.11% 42.79%, 47.52% 42.85%, 47.46% 19.57%)"
+         onmouseenter="mostrarInfo('Lab Cantera')"
+         onmouseleave="ocultarInfo()"
+         onclick="irAEscena4('assets/imagen-6.webp', 'Lab Cantera', '43%', '31%', null, null, 'nav-cantera-a-areacomun nav-cantera-a-pruebas nav-cantera-a-sanitarios nav-cantera-a-vestibulo camara-cantera1-55 camara-cantera1-56')"></div>
+
+    <!-- Edificio 1 — Lab de Pruebas, z-index 30 — DESACTIVADO -->
+    <div class="botones-escena-3 zonas-edificio-1 zona-interactiva"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:30; pointer-events:auto; cursor:pointer; clip-path:polygon(47.46% 19.64%, 47.57% 35.02%, 50.58% 35.02%, 52.27% 37.12%, 52.33% 42.72%, 56.81% 42.85%, 59.33% 39.61%, 56.87% 36.58%, 56.97% 19.57%)"
+         onmouseenter="mostrarInfo('Lab de Pruebas')"
+         onmouseleave="ocultarInfo()"
+         onclick="irAEscena4('assets/imagen-7.webp', 'Lab de Pruebas', '53%', '34%', null, null, 'nav-pruebas-a-cantera nav-pruebas-a-morteros nav-pruebas-a-sanitarios nav-pruebas-a-vestibulo-1 nav-pruebas-a-vestibulo-2')"></div>
+
+    <!-- Edificio 1 — Sanitarios, z-index 30 — DESACTIVADO -->
+    <div class="botones-escena-3 zonas-edificio-1 zona-interactiva"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:30; pointer-events:auto; cursor:pointer; clip-path:polygon(47.46% 35.02%, 47.46% 42.79%, 42.43% 42.72%, 48.83% 50.61%, 53.91% 50.61%, 53.91% 46.36%, 56.97% 42.72%, 52.33% 42.85%, 52.33% 37.05%, 50.58% 35.02%)"
+         onmouseenter="mostrarInfo('Sanitarios')"
+         onmouseleave="ocultarInfo()"
+         onclick="irAEscena4('assets/imagen-12.webp', 'Sanitarios', '51%', '43%', null, null, 'nav-sanitarios-a-cantera nav-sanitarios-a-pruebas nav-sanitarios-a-morteros nav-sanitarios-a-conservprev nav-sanitarios-a-principal nav-sanitarios-a-vestibulo camara-sanitarios1-49 camara-sanitarios1-50 camara-sanitarios1-51 camara-sanitarios1-53')"></div>
+
+    <!-- Edificio 1 — Lab Morteros, z-index 30 -->
+    <div class="botones-escena-3 zonas-edificio-1 zona-interactiva"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:30; pointer-events:auto; cursor:pointer; clip-path:polygon(56.97% 19.50%, 56.92% 36.71%, 61.90% 42.72%, 75.73% 42.92%)"
+         onmouseenter="mostrarInfo('Lab Morteros')"
+         onmouseleave="ocultarInfo()"
+         onclick="irAEscena4('assets/imagen-8.webp', 'Lab Morteros', '63%', '35%', null, null, 'nav-morteros-a-pruebas nav-morteros-a-sanitarios nav-morteros-a-conservprev nav-morteros-a-vestibulo camara-morteros1-44 camara-morteros1-45 camara-morteros1-46 camara-morteros1-47 camara-morteros1-48')"></div>
+
+    <!-- Edificio 1 — Lab Conservación Prev, z-index 30 — DESACTIVADO -->
+    <div class="botones-escena-3 zonas-edificio-1 zona-interactiva"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:30; pointer-events:auto; cursor:pointer; clip-path:polygon(75.73% 42.79%, 61.79% 42.79%, 57.14% 48.59%, 61.73% 54.46%, 75.73% 54.46%)"
+         onmouseenter="mostrarInfo('Lab Conservación Prev')"
+         onmouseleave="ocultarInfo()"
+         onclick="irAEscena4('assets/imagen-9.webp', 'Lab Conservación Prev', '66%', '49%', null, null, 'nav-conservprev-a-morteros nav-conservprev-a-acabados nav-conservprev-a-vestibulo camara-conservprev1-39 camara-conservprev1-40 camara-conservprev1-41 camara-conservprev1-42')"></div>
+
+    <!-- Edificio 1 — Lab de Acabados, z-index 30 — DESACTIVADO -->
+    <div class="botones-escena-3 zonas-edificio-1 zona-interactiva"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:30; pointer-events:auto; cursor:pointer; clip-path:polygon(75.73% 54.34%, 61.79% 54.41%, 59.33% 57.45%, 66.22% 66.02%, 66.32% 77.56%, 75.73% 66.02%)"
+         onmouseenter="mostrarInfo('Lab de Acabados')"
+         onmouseleave="ocultarInfo()"
+         onclick="irAEscena4('assets/imagen-10.webp', 'Lab de Acabados', '68%', '63%', null, null, 'nav-acabados-a-conservprev nav-acabados-a-principal nav-acabados-a-vestibulo camara-acabados1-34 camara-acabados1-35 camara-acabados1-36 camara-acabados1-37 camara-acabados1-38')"></div>
+
+    <!-- Edificio 1 — Lab Principal, z-index 30 — DESACTIVADO -->
+    <div class="botones-escena-3 zonas-edificio-1 zona-interactiva"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:30; pointer-events:auto; cursor:pointer; clip-path:polygon(47.46% 54.41%, 47.46% 66.02%, 56.87% 77.56%, 66.32% 77.69%, 66.27% 66.08%, 56.92% 54.34%, 52.98% 54.41%, 52.93% 60.89%, 50.63% 58.12%, 50.69% 54.41%)"
+         onmouseenter="mostrarInfo('Lab Principal')"
+         onmouseleave="ocultarInfo()"
+         onclick="irAEscena4('assets/imagen-11.webp', 'Lab Principal', '55%', '62%', null, null, 'nav-principal-a-acabados nav-principal-a-conservprev nav-principal-a-vestibulo camara-principal1-19 camara-principal1-21 camara-principal1-22 camara-principal1-23 camara-principal1-24 camara-principal1-25 camara-principal1-26 camara-principal1-27 camara-principal1-28 camara-principal1-29 camara-principal1-30')"></div>
+
+    <!-- Edificio 1 — Vestíbulo/Pasillos, z-index 30 — DESACTIVADO -->
+    <div class="botones-escena-3 zonas-edificio-1 zona-interactiva"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:30; pointer-events:auto; cursor:pointer; clip-path:polygon(59.33% 39.76%, 53.91% 46.38%, 54.02% 50.56%, 48.72% 50.56%, 42.38% 42.73%, 28.60% 42.87%, 28.65% 39.22%, 22.20% 39.22%, 19.19% 42.67%, 25.15% 42.80%, 25.15% 46.11%, 28.71% 46.11%, 28.76% 57.11%, 31.28% 57.11%, 35.10% 50.70%, 40.68% 46.18%, 47.52% 54.34%, 50.58% 54.41%, 50.63% 58.12%, 52.98% 61.02%, 52.98% 54.54%, 56.81% 54.41%, 59.33% 57.51%, 61.79% 54.34%, 56.97% 48.54%, 61.79% 42.67%)"
+         onmouseenter="mostrarInfo('Vestíbulo/Pasillos')"
+         onmouseleave="ocultarInfo()"
+         onclick="irAEscena4('assets/edificio1.webp', 'Vestíbulo/Pasillos', '43%', '49%', null, 2, 'camara-vestibulo1-13 camara-vestibulo1-14 camara-vestibulo1-15 camara-vestibulo1-16 camara-vestibulo1-16-5 camara-vestibulo1-31 camara-vestibulo1-32 camara-vestibulo1-33 camara-vestibulo1-43 camara-vestibulo1-54 camara-vestibulo1-57 camara-vestibulo1-64')"></div>
+
+    <!-- Edificio 1 — Capa Exterior, z-index 20 -->
+    <div class="botones-escena-3 zonas-edificio-1"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:20; pointer-events:auto; cursor:pointer; clip-path:ellipse(36.42% 43.21% at 45.47% 52.73%)"
+         onclick="irAExteriorEdificio(1)"
+         onmouseenter="mostrarInfo('Explorar Exterior')"
+         onmouseleave="ocultarInfo()"></div>
+
+    <!-- Edificio 2 — Almacén / Mantenimiento, z-index 30 — DESACTIVADO -->
+    <div class="botones-escena-3 zonas-edificio-2 zona-interactiva"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:30; pointer-events:auto; cursor:pointer; clip-path:polygon(58.93% 17.85%, 68.41% 29.55%, 58.93% 29.55%)"
+         onmouseenter="mostrarInfo('Almacén / Mantenimiento')"
+         onmouseleave="ocultarInfo()"
+         onclick="irAEscena4('assets/imagen-13.webp', 'Almacén / Mantenimiento', '62%', '26%', null, null, 'nav-almacen2-a-mediateca camara-almacen2-120')"></div>
+
+    <!-- Edificio 2 — Mediateca, z-index 30 — DESACTIVADO -->
+    <div class="botones-escena-3 zonas-edificio-2 zona-interactiva"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:30; pointer-events:auto; cursor:pointer; clip-path:polygon(40.10% 17.92%, 58.93% 17.85%, 58.93% 29.55%, 49.45% 29.55%)"
+         onmouseenter="mostrarInfo('Mediateca')"
+         onmouseleave="ocultarInfo()"
+         onclick="irAEscena4('assets/imagen-14.webp', 'Mediateca', '52%', '24%', null, null, 'nav-mediateca-a-almacen2 nav-mediateca-a-temporal nav-mediateca-a-vestibulo2 camara-mediateca2-114 camara-mediateca2-115 camara-mediateca2-116 camara-mediateca2-117 camara-mediateca2-118')"></div>
+
+    <!-- Edificio 2 — Exposición Temporal, z-index 30 — DESACTIVADO -->
+    <div class="botones-escena-3 zonas-edificio-2 zona-interactiva"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:30; pointer-events:auto; cursor:pointer; clip-path:polygon(40.10% 17.92%, 49.45% 29.55%, 40.10% 41.24%, 30.68% 41.24%, 30.62% 33.60%, 28.92% 31.65%)"
+         onmouseenter="mostrarInfo('Exposición Temporal')"
+         onmouseleave="ocultarInfo()"
+         onclick="irAEscena4('assets/imagen-15.webp', 'Exposición Temporal', '37%', '33%', null, null, 'nav-temporal-a-permanente nav-temporal-a-mediateca nav-temporal-a-vestibulo2 camara-temporal2-109 camara-temporal2-110 camara-temporal2-111 camara-temporal2-112')"></div>
+
+    <!-- Edificio 2 — Exposición Permanente, z-index 30 — DESACTIVADO -->
+    <div class="botones-escena-3 zonas-edificio-2 zona-interactiva"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:30; pointer-events:auto; cursor:pointer; clip-path:polygon(28.92% 31.65%, 30.62% 33.60%, 30.68% 41.24%, 40.10% 41.24%, 40.10% 52.79%, 21.26% 52.79%, 21.26% 41.24%)"
+         onmouseenter="mostrarInfo('Exposición Permanente')"
+         onmouseleave="ocultarInfo()"
+         onclick="irAEscena4('assets/imagen-16.webp', 'Exposición Permanente', '30%', '42%', null, null, 'nav-permanente-a-temporal nav-permanente-a-cafeteria nav-permanente-a-vestibulo2 camara-permanente2-102 camara-permanente2-103 camara-permanente2-104 camara-permanente2-105 camara-permanente2-106 camara-permanente2-107 camara-permanente2-108')"></div>
+
+    <!-- Edificio 2 — Cafetería, z-index 30 — DESACTIVADO -->
+    <div class="botones-escena-3 zonas-edificio-2 zona-interactiva"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:30; pointer-events:auto; cursor:pointer; clip-path:polygon(21.26% 52.79%, 40.10% 52.79%, 40.10% 76.26%, 30.62% 76.04%, 21.26% 64.49%)"
+         onmouseenter="mostrarInfo('Cafetería')"
+         onmouseleave="ocultarInfo()"
+         onclick="irAEscena4('assets/imagen-17.webp', 'Cafetería', '31%', '64%', null, null, 'nav-cafeteria-a-permanente nav-cafeteria-a-vestibulo2 nav-cafeteria-a-cocineta2 nav-cafeteria-a-auditorio camara-cafeteria2-92 camara-cafeteria2-93 camara-cafeteria2-94 camara-cafeteria2-95 camara-cafeteria2-96 camara-cafeteria2-99')"></div>
+
+    <!-- Edificio 2 — Cocineta y Almacén, z-index 30 — DESACTIVADO -->
+    <div class="botones-escena-3 zonas-edificio-2 zona-interactiva"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:30; pointer-events:auto; cursor:pointer; clip-path:polygon(30.62% 76.04%, 40.10% 76.26%, 40.10% 87.74%)"
+         onmouseenter="mostrarInfo('Cocineta')"
+         onmouseleave="ocultarInfo()"
+         onclick="irAEscena4('assets/imagen-18.webp', 'Cocineta', '37%', '80%', null, null, 'nav-cocineta2-a-cafeteria nav-cocineta2-a-auditorio camara-cocineta2-97 camara-cocineta2-98')"></div>
+
+    <!-- Edificio 2 — Auditorio, z-index 30 — DESACTIVADO -->
+    <div class="botones-escena-3 zonas-edificio-2 zona-interactiva"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:30; pointer-events:auto; cursor:pointer; clip-path:polygon(40.10% 64.42%, 68.41% 64.49%, 68.41% 76.11%, 58.93% 87.89%, 40.10% 87.74%)"
+         onmouseenter="mostrarInfo('Auditorio')"
+         onmouseleave="ocultarInfo()"
+         onclick="irAEscena4('assets/imagen-19.webp', 'Auditorio', '55%', '76%', null, null, 'nav-auditorio-a-cafeteria nav-auditorio-a-cocineta2 nav-auditorio-a-sanitarios2 nav-auditorio-a-vestibulo2 camara-auditorio2-85 camara-auditorio2-86 camara-auditorio2-87 camara-auditorio2-89 camara-auditorio2-90 camara-auditorio2-91')"></div>
+
+    <!-- Edificio 2 — Sanitarios Públicos, z-index 30 — DESACTIVADO -->
+    <div class="botones-escena-3 zonas-edificio-2 zona-interactiva"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:30; pointer-events:auto; cursor:pointer; clip-path:polygon(49.51% 52.79%, 58.93% 52.79%, 68.41% 64.49%, 49.51% 64.49%)"
+         onmouseenter="mostrarInfo('Sanitarios Públicos')"
+         onmouseleave="ocultarInfo()"
+         onclick="irAEscena4('assets/imagen-20.webp', 'Sanitarios Públicos', '57%', '59%', null, null, 'nav-sanitarios2-a-auditorio nav-sanitarios2-a-vestibulo2 camara-sanitarios2-124-1 camara-sanitarios2-125-1')"></div>
+
+    <!-- Edificio 2 — Vestíbulo, z-index 30 — DESACTIVADO -->
+    <div class="botones-escena-3 zonas-edificio-2 zona-interactiva"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:30; pointer-events:auto; cursor:pointer; clip-path:polygon(40.10% 41.24%, 49.45% 29.55%, 51.88% 29.55%, 51.88% 32.92%, 46.66% 37.57%, 42.95% 44.54%, 49.51% 52.79%, 49.51% 64.49%, 40.10% 64.49%)"
+         onmouseenter="mostrarInfo('Vestíbulo')"
+         onmouseleave="ocultarInfo()"
+         onclick="irAEscena4('assets/imagen-21.webp', 'Vestíbulo', '47%', '44%', null, null, 'nav-vestibulo2-a-temporal nav-vestibulo2-a-permanente nav-vestibulo2-a-cafeteria nav-vestibulo2-a-auditorio nav-vestibulo2-a-sanitarios2 camara-vestibulo2-82 camara-vestibulo2-83 camara-vestibulo2-84 camara-vestibulo2-100 camara-vestibulo2-113 camara-vestibulo2-121 camara-vestibulo2-122')"></div>
+
+    <!-- Edificio 2 — Capa Exterior, z-index 20 -->
+    <div class="botones-escena-3 zonas-edificio-2"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:20; pointer-events:auto; cursor:pointer; clip-path:ellipse(35.12% 45.37% at 48.36% 50.09%)"
+         onclick="irAExteriorEdificio(2)"
+         onmouseenter="mostrarInfo('Explorar Exterior')"
+         onmouseleave="ocultarInfo()"></div>
+
+    <!-- Edificio 3 — Sanitarios Oficinas, z-index 30 — DESACTIVADO -->
+    <div class="botones-escena-3 zonas-edificio-3 zona-interactiva"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:30; pointer-events:auto; cursor:pointer; clip-path:polygon(63.43% 26.27%, 73.15% 38.27%, 63.43% 38.19%)"
+         onmouseenter="mostrarInfo('Sanitarios Oficinas')"
+         onmouseleave="ocultarInfo()"
+         onclick="irAEscena4('assets/imagen-22.webp', 'Sanitarios Oficinas', '66.67%', '34.24%', null, null, 'nav-sanitariosof-a-oficinas')"></div>
+
+    <!-- Edificio 3 — Oficinas, z-index 30 — DESACTIVADO -->
+    <div class="botones-escena-3 zonas-edificio-3 zona-interactiva"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:30; pointer-events:auto; cursor:pointer; clip-path:polygon(63.43% 38.19%, 73.15% 38.27%, 73.15% 62.04%, 53.77% 86.04%, 53.83% 62.12%, 50.91% 58.52%, 60.63% 47.19%, 63.37% 47.27%)"
+         onmouseenter="mostrarInfo('Oficinas')"
+         onmouseleave="ocultarInfo()"
+         onclick="irAEscena4('assets/imagen-23.webp', 'Oficinas', '63.43%', '50%', 'assets/imagen-24.webp', null, 'nav-oficinas-a-sanitariosof nav-oficinas-a-areacomun camara-oficinas-sur camara-oficinas-150 camara-oficinas-149 camara-oficinas-148 camara-oficinas-147 camara-oficinas-146 camara-oficinas-145 camara-oficinas-144 camara-oficinas-143 camara-oficinas-142 camara-oficinas-141')"></div>
+
+    <!-- Edificio 3 — Área Común, z-index 30 — DESACTIVADO -->
+    <div class="botones-escena-3 zonas-edificio-3 zona-interactiva"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:30; pointer-events:auto; cursor:pointer; clip-path:polygon(34.45% 54.02%, 41.74% 54.02%, 48.36% 62.04%, 53.77% 62.04%, 53.77% 86.11%, 34.45% 86.04%)"
+         onmouseenter="mostrarInfo('Área Común')"
+         onmouseleave="ocultarInfo()"
+         onclick="irAEscena4('assets/imagen-25.webp', 'Área Común', '44%', '70%', null, null, 'nav-areacomun3-a-vestibulo3 nav-areacomun3-a-oficinas nav-areacomun3-a-taller1 nav-areacomun3-a-almacen3 camara-areacomun3-128 camara-areacomun3-129 camara-areacomun3-130')"></div>
+
+    <!-- Edificio 3 — Almacén / Mantenimiento, z-index 30 — DESACTIVADO -->
+    <div class="botones-escena-3 zonas-edificio-3 zona-interactiva"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:30; pointer-events:auto; cursor:pointer; clip-path:polygon(24.73% 74.12%, 34.45% 74.12%, 34.39% 86.04%)"
+         onmouseenter="mostrarInfo('Almacén / Mantenimiento')"
+         onmouseleave="ocultarInfo()"></div>
+
+    <!-- Edificio 3 — Taller 1, z-index 30 — DESACTIVADO -->
+    <div class="botones-escena-3 zonas-edificio-3 zona-interactiva"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:30; pointer-events:auto; cursor:pointer; clip-path:polygon(24.67% 50.19%, 31.83% 50.19%, 31.83% 54.39%, 34.51% 54.09%, 34.39% 74.04%, 24.67% 74.04%)"
+         onmouseenter="mostrarInfo('Taller 1')"
+         onmouseleave="ocultarInfo()"
+         onclick="irAEscena4('assets/imagen-26.webp', 'Taller 1', '30%', '60%', null, null, 'nav-taller1-a-taller3 nav-taller1-a-taller4 nav-taller1-a-taller2 nav-taller1-a-vestibulo3 nav-taller1-a-areacomun camara-taller1-132 camara-taller1-133')"></div>
+
+    <!-- Edificio 3 — Taller 3, z-index 30 — DESACTIVADO -->
+    <div class="botones-escena-3 zonas-edificio-3 zona-interactiva"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:30; pointer-events:auto; cursor:pointer; clip-path:polygon(15.01% 50.12%, 24.73% 50.12%, 24.67% 74.12%, 15.07% 62.04%)"
+         onmouseenter="mostrarInfo('Taller 3')"
+         onmouseleave="ocultarInfo()"
+         onclick="irAEscena4('assets/imagen-27.webp', 'Taller 3', '20%', '59%', null, null, 'nav-taller3-a-taller4 nav-taller3-a-taller1 nav-taller3-a-taller2 camara-taller3-139 camara-taller3-140')"></div>
+
+    <!-- Edificio 3 — Taller 4, z-index 30 — DESACTIVADO -->
+    <div class="botones-escena-3 zonas-edificio-3 zona-interactiva"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:30; pointer-events:auto; cursor:pointer; clip-path:polygon(15.07% 38.34%, 24.67% 26.27%, 24.73% 50.19%, 14.88% 50.34%)"
+         onmouseenter="mostrarInfo('Taller 4')"
+         onmouseleave="ocultarInfo()"
+         onclick="irAEscena4('assets/imagen-29.webp', 'Taller 4', '20%', '41%', null, null, 'nav-taller4-a-taller2 nav-taller4-a-taller1 nav-taller4-a-taller3 camara-taller4-136 camara-taller4-137 camara-taller4-138')"></div>
+
+    <!-- Edificio 3 — Taller 2, z-index 30 — DESACTIVADO -->
+    <div class="botones-escena-3 zonas-edificio-3 zona-interactiva"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:30; pointer-events:auto; cursor:pointer; clip-path:polygon(24.67% 26.35%, 34.51% 26.35%, 34.39% 50.04%, 24.67% 50.27%)"
+         onmouseenter="mostrarInfo('Taller 2')"
+         onmouseleave="ocultarInfo()"
+         onclick="irAEscena4('assets/imagen-28.webp', 'Taller 2', '30%', '38%', null, null, 'nav-taller2-a-taller4 nav-taller2-a-taller1 nav-taller2-a-taller3 nav-taller2-a-sanitarios3 camara-taller2-134 camara-taller2-135')"></div>
+
+    <!-- Edificio 3 — Sanitarios Públicos, z-index 30 — DESACTIVADO -->
+    <div class="botones-escena-3 zonas-edificio-3 zona-interactiva"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:30; pointer-events:auto; cursor:pointer; clip-path:polygon(34.45% 26.35%, 44.05% 38.19%, 44.11% 50.19%, 34.39% 50.19%)"
+         onmouseenter="mostrarInfo('Sanitarios Públicos')"
+         onmouseleave="ocultarInfo()"
+         onclick="irAEscena4('assets/imagen-30.webp', 'Sanitarios Públicos', '39%', '41%', null, null, 'nav-sanitarios3-a-taller2 nav-sanitarios3-a-taller1 nav-sanitarios3-a-vestibulo3 nav-sanitarios3-a-areacomun camara-sanitarios3-123 camara-sanitarios3-124 camara-sanitarios3-125')"></div>
+
+    <!-- Edificio 3 — Vestíbulo, z-index 30 — DESACTIVADO -->
+    <div class="botones-escena-3 zonas-edificio-3 zona-interactiva"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:30; pointer-events:auto; cursor:pointer; clip-path:polygon(31.90% 50.19%, 44.11% 50.12%, 53.83% 62.04%, 48.36% 62.19%, 41.56% 54.02%, 31.90% 54.32%)"
+         onmouseenter="mostrarInfo('Vestíbulo')"
+         onmouseleave="ocultarInfo()"
+         onclick="irAEscena4('assets/edificio3.webp', 'Vestíbulo', '42%', '55%', null, 2, 'camara-vestibulo3-127 camara-vestibulo3-131')"></div>
+
+    <!-- Edificio 3 — Capa Exterior, z-index 20 -->
+    <div class="botones-escena-3 zonas-edificio-3"
+         style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:20; pointer-events:auto; cursor:pointer; clip-path:ellipse(37.73% 44.18% at 46.11% 51.68%)"
+         onclick="irAExteriorEdificio(3)"
+         onmouseenter="mostrarInfo('Explorar Exterior')"
+         onmouseleave="ocultarInfo()"></div>
+
+    <!-- Exterior Edificio 1: tinte gris + coordenadas (doble clic afuera del centro = regresar) -->
+    <div class="botones-exterior-edificio1 btn-catchall-edificio-planta"
+         style="display:none; z-index:10; pointer-events:none; border:2px solid gray; background-color:rgba(128,128,128,0.3);"></div>
+    <div class="botones-exterior-edificio1 herramienta-coordenadas-exterior"
+         style="display:none;"
+         onclick="clicExteriorEdificio(1, event)"></div>
+
+    <!-- Exterior Edificio 2: tinte gris + coordenadas -->
+    <div class="botones-exterior-edificio2 btn-catchall-edificio-planta"
+         style="display:none; z-index:10; pointer-events:none; border:2px solid gray; background-color:rgba(128,128,128,0.3);"></div>
+    <div class="botones-exterior-edificio2 herramienta-coordenadas-exterior"
+         style="display:none;"
+         onclick="clicExteriorEdificio(2, event)"></div>
+
+    <!-- Exterior Edificio 3: tinte gris + coordenadas -->
+    <div class="botones-exterior-edificio3 btn-catchall-edificio-planta"
+         style="display:none; z-index:10; pointer-events:none; border:2px solid gray; background-color:rgba(128,128,128,0.3);"></div>
+    <div class="botones-exterior-edificio3 herramienta-coordenadas-exterior"
+         style="display:none;"
+         onclick="clicExteriorEdificio(3, event)"></div>
+    </div>
+  </div>
+  </div>
+
+
+  <div id="panel-info"></div>
+
+  <script>
+    /* ══ Candado herramientas de desarrollo (true = habilitado) ══ */
+    window.HERRAMIENTAS_DEV = {
+      editorPoligonos: false,
+      coordenadasPorClic: false
+    };
+
+    function herramientasCoordsActivas() {
+      return window.HERRAMIENTAS_DEV.coordenadasPorClic === true;
+    }
+
+    function editorPoligonosActivo() {
+      return window.HERRAMIENTAS_DEV.editorPoligonos === true;
+    }
+
+    function aplicarCandadoHerramientasDev() {
+      document.body.classList.toggle('sin-herramienta-coords', !herramientasCoordsActivas());
+      var btnEd = document.getElementById('btn-editor');
+      if (btnEd) {
+        if (editorPoligonosActivo()) {
+          btnEd.textContent = '✏️ Editor';
+          btnEd.title = 'Editor de polígonos (tecla E)';
+          btnEd.classList.remove('bloqueado-dev');
+        } else {
+          btnEd.textContent = '🔒 Editor';
+          btnEd.title = 'Bloqueado. En index.html: HERRAMIENTAS_DEV.editorPoligonos = true';
+          btnEd.classList.add('bloqueado-dev');
+        }
+      }
+    }
+
+    /* ── Herramienta de coordenadas ── */
+    const mapImg           = document.getElementById('mapa-principal');
+    const mapContainer     = document.querySelector('.map-container');
+    const mapaInteractivo  = document.getElementById('mapa-interactivo');
+    const overlay      = document.getElementById('overlay-oscuro');
+    const loaderEscena = document.getElementById('loader-escena');
+    const mapaSecundario = document.getElementById('mapa-secundario');
+
+    const IMAGEN_INICIAL = 'assets/Planta Conjunto.webp';
+    const PLANTA_EDIFICIOS = 'assets/planta-edificios.webp';
+    var imagenEscenaActual = IMAGEN_INICIAL;
+    var cacheImagenes = {};
+    var promesasEnVuelo = {};
+    var generacionCarga = 0;
+    var colaVecinosPendiente = [];
+    var MAX_CARGAS_PARALELAS = 2;
+
+    var CARGA_SPLASH_TIMEOUT_MS = 6000;
+    var cargaInicialActiva = true;
+
+    var MAPA_EDIFICIO_ZONA = {
+      'assets/edificio1.webp': 'zonas-edificio-1',
+      'assets/edificio2.webp': 'zonas-edificio-2',
+      'assets/edificio3.webp': 'zonas-edificio-3'
+    };
+
+    var VECINOS_MAPA = {
+      'assets/Planta Conjunto.webp': [PLANTA_EDIFICIOS],
+      'assets/planta-edificios.webp': [
+        IMAGEN_INICIAL,
+        'assets/edificio1.webp',
+        'assets/edificio2.webp',
+        'assets/edificio3.webp'
+      ],
+      'assets/edificio1.webp': [PLANTA_EDIFICIOS],
+      'assets/edificio2.webp': [PLANTA_EDIFICIOS],
+      'assets/edificio3.webp': [PLANTA_EDIFICIOS]
+    };
+
+    function invalidarCargasPendientes() {
+      generacionCarga += 1;
+      colaVecinosPendiente = [];
+    }
+
+    function contarCargasActivas() {
+      return Object.keys(promesasEnVuelo).length;
+    }
+
+    function precargarImagen(src, generacion) {
+      if (!src) return Promise.resolve(null);
+      if (cacheImagenes[src]) return Promise.resolve(cacheImagenes[src]);
+
+      var gen = generacion !== undefined ? generacion : generacionCarga;
+      if (promesasEnVuelo[src] && promesasEnVuelo[src].gen === gen) {
+        return promesasEnVuelo[src].promise;
+      }
+
+      var promise = new Promise(function (resolve) {
+        var img = new Image();
+        function finalizar(resultado) {
+          delete promesasEnVuelo[src];
+          if (gen !== generacionCarga) {
+            resolve(null);
+            return;
+          }
+          if (resultado) cacheImagenes[src] = resultado;
+          resolve(resultado);
+        }
+        img.onload = function () { finalizar(img); };
+        img.onerror = function () { finalizar(null); };
+        img.src = src;
+      });
+
+      promesasEnVuelo[src] = { gen: gen, promise: promise };
+      return promise;
+    }
+
+    function esperarImagenElemento(img) {
+      if (!img || !img.src) return Promise.resolve();
+      if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+      return new Promise(function (resolve) {
+        function onListo() {
+          img.removeEventListener('load', onListo);
+          img.removeEventListener('error', onListo);
+          resolve();
+        }
+        img.addEventListener('load', onListo);
+        img.addEventListener('error', onListo);
+      });
+    }
+
+    function activarCortinaCarga() {
+      overlay.style.opacity = '1';
+      loaderEscena.style.display = 'block';
+    }
+
+    function retirarCortinaCarga(delay) {
+      loaderEscena.style.display = 'none';
+      setTimeout(function () {
+        overlay.style.opacity = '0';
+      }, delay || 0);
+    }
+
+    function asignarImagenPrincipal(src) {
+      invalidarCargasPendientes();
+      var gen = generacionCarga;
+      return precargarImagen(src, gen).then(function () {
+        if (gen !== generacionCarga) return Promise.resolve();
+        mapImg.src = src;
+        imagenEscenaActual = src;
+        return esperarImagenElemento(mapImg);
+      });
+    }
+
+    function asignarImagenSecundaria(src) {
+      if (!src) {
+        mapaSecundario.style.display = 'none';
+        mapaSecundario.src = '';
+        mapaInteractivo.classList.remove('mapa-dual');
+        return Promise.resolve();
+      }
+      var gen = generacionCarga;
+      return precargarImagen(src, gen).then(function () {
+        if (gen !== generacionCarga) return Promise.resolve();
+        mapaSecundario.src = src;
+        mapaSecundario.style.display = 'block';
+        mapaInteractivo.classList.add('mapa-dual');
+        return esperarImagenElemento(mapaSecundario);
+      });
+    }
+
+    function extraerRutasOnclick(onclick) {
+      if (!onclick) return [];
+      return (onclick.match(/assets\/[^'"]+\.webp/g) || []).filter(function (r, i, a) {
+        return a.indexOf(r) === i;
+      });
+    }
+
+    function rutasPrimerClicDesdeOnclick(onclick) {
+      var rutas = extraerRutasOnclick(onclick);
+      return rutas.length ? [rutas[0]] : [];
+    }
+
+    function obtenerVecinosUnClic(rutaActual, opts) {
+      opts = opts || {};
+      var vecinos = (VECINOS_MAPA[rutaActual] || []).slice();
+      var clase = opts.claseZonas || MAPA_EDIFICIO_ZONA[rutaActual];
+
+      if (clase) {
+        document.querySelectorAll('.botones-escena-3.' + clase + '[onclick*="irAEscena4"]').forEach(function (el) {
+          vecinos = vecinos.concat(rutasPrimerClicDesdeOnclick(el.getAttribute('onclick')));
+        });
+      }
+
+      if (opts.navIds) {
+        opts.navIds.trim().split(/\s+/).forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el && el.classList.contains('nav-escena-4')) {
+            vecinos = vecinos.concat(rutasPrimerClicDesdeOnclick(el.getAttribute('onclick')));
+          }
+        });
+      }
+
+      if (opts.extra) vecinos = vecinos.concat(opts.extra);
+
+      if (typeof e3Imagen !== 'undefined' && e3Imagen && rutaActual !== e3Imagen && !MAPA_EDIFICIO_ZONA[rutaActual]) {
+        vecinos.push(e3Imagen);
+      }
+
+      if (opts.selectorCamaras) {
+        document.querySelectorAll(opts.selectorCamaras).forEach(function (el) {
+          if (el.style.display === 'none') return;
+          vecinos = vecinos.concat(rutasPrimerClicDesdeOnclick(el.getAttribute('onclick')));
+        });
+      }
+
+      return rutasUnicas(vecinos.filter(function (r) {
+        return r && r !== rutaActual;
+      }));
+    }
+
+    function procesarColaVecinos(vecinos, generacion) {
+      colaVecinosPendiente = vecinos.slice();
+      var indice = 0;
+
+      function despachar() {
+        if (generacion !== generacionCarga) return;
+        while (indice < colaVecinosPendiente.length && contarCargasActivas() < MAX_CARGAS_PARALELAS) {
+          var src = colaVecinosPendiente[indice++];
+          if (cacheImagenes[src]) continue;
+          precargarImagen(src, generacion).then(despachar);
+        }
+      }
+
+      despachar();
+    }
+
+    function activarCargaReactiva(rutaActual, opts) {
+      opts = opts || {};
+      invalidarCargasPendientes();
+      var gen = generacionCarga;
+      var vecinos = obtenerVecinosUnClic(rutaActual, opts);
+
+      precargarImagen(rutaActual, gen).then(function () {
+        if (gen !== generacionCarga) return;
+        procesarColaVecinos(vecinos, gen);
+      });
+    }
+
+    var splashOcultado = false;
+
+    function rutasUnicas(lista) {
+      return (lista || []).filter(function (r, i, a) {
+        return r && a.indexOf(r) === i;
+      });
+    }
+
+    function actualizarTextoSplash(texto) {
+      var el = document.getElementById('splash-progreso');
+      if (el) el.textContent = texto;
+    }
+
+    function iniciarContadorSplash(segundos) {
+      var restante = segundos;
+      actualizarTextoSplash('Precargando recorrido... ' + restante + 's');
+      var intervalo = setInterval(function () {
+        restante -= 1;
+        if (restante > 0) {
+          actualizarTextoSplash('Precargando recorrido... ' + restante + 's');
+        } else {
+          clearInterval(intervalo);
+        }
+      }, 1000);
+    }
+
+    function ocultarSplash() {
+      if (splashOcultado) return;
+      splashOcultado = true;
+      var splash = document.getElementById('splash-screen');
+      splash.style.opacity = '0';
+      splash.style.visibility = 'hidden';
+      splash.style.pointerEvents = 'none';
+    }
+
+    function solicitarPantallaCompleta() {
+      var root = document.documentElement;
+      var request = root.requestFullscreen ||
+        root.webkitRequestFullscreen ||
+        root.mozRequestFullScreen ||
+        root.msRequestFullscreen;
+      if (!request) {
+        return Promise.reject(new Error('Fullscreen no disponible'));
+      }
+      return Promise.resolve(request.call(root));
+    }
+
+    function marcarBotonPantallaCompletaActivado(btn) {
+      if (!btn || btn.classList.contains('activado')) return;
+      if (btn.id === 'btn-pantalla-completa-splash') {
+        btn.textContent = 'Modo inmersivo activado';
+        btn.disabled = true;
+      } else {
+        btn.title = 'Modo inmersivo activado';
+        btn.setAttribute('aria-label', 'Modo inmersivo activado');
+      }
+      btn.classList.add('activado');
+    }
+
+    function enlazarBotonPantallaCompleta(btn) {
+      if (!btn || btn.dataset.configurado === '1') return;
+      btn.dataset.configurado = '1';
+      btn.addEventListener('click', function () {
+        if (btn.classList.contains('activado')) return;
+        marcarBotonPantallaCompletaActivado(btn);
+        var global = document.getElementById('btn-pantalla-completa');
+        if (global && global !== btn) marcarBotonPantallaCompletaActivado(global);
+        var splash = document.getElementById('btn-pantalla-completa-splash');
+        if (splash && splash !== btn) marcarBotonPantallaCompletaActivado(splash);
+        solicitarPantallaCompleta().catch(function () {});
+      });
+    }
+
+    function configurarBotonesPantallaCompleta() {
+      enlazarBotonPantallaCompleta(document.getElementById('btn-pantalla-completa-splash'));
+      enlazarBotonPantallaCompleta(document.getElementById('btn-pantalla-completa'));
+    }
+
+    function liberarInterfazInicial() {
+      if (!cargaInicialActiva) return;
+      cargaInicialActiva = false;
+      document.body.classList.remove('carga-inicial-bloqueada');
+      ocultarSplash();
+      if (esVistaMovil()) {
+        abrirMapaOverlay();
+      }
+    }
+
+    function iniciarCargaInicial() {
+      configurarBotonesPantallaCompleta();
+      document.body.classList.add('carga-inicial-bloqueada');
+      iniciarContadorSplash(CARGA_SPLASH_TIMEOUT_MS / 1000);
+      activarCargaReactiva(IMAGEN_INICIAL);
+      setTimeout(liberarInterfazInicial, CARGA_SPLASH_TIMEOUT_MS);
+    }
+
+    var accionRegresoPlanta = null;
+
+    function mostrarBtnRegresarPlanta(fn) {
+      accionRegresoPlanta = fn;
+      document.getElementById('btn-regresar-planta').style.display = 'block';
+    }
+
+    function ocultarBtnRegresarPlanta() {
+      accionRegresoPlanta = null;
+      document.getElementById('btn-regresar-planta').style.display = 'none';
+    }
+
+    function ejecutarRegresoPlanta() {
+      ocultarInfo();
+      apagarTodasLasCamaras();
+      if (typeof accionRegresoPlanta === 'function') {
+        accionRegresoPlanta();
+        return;
+      }
+      if (imagenEscenaActual !== IMAGEN_INICIAL) {
+        volverAEscena1();
+      }
+    }
+
+    function navegarAtras() {
+      var visor = document.getElementById('visor-pantalla-completa');
+      if (visor && visor.style.display === 'block') {
+        cerrarRender();
+        return;
+      }
+      if (document.body.classList.contains('mapa-desplegado')) {
+        cerrarMapaOverlay();
+        return;
+      }
+      ejecutarRegresoPlanta();
+    }
+
+    /* Zoom de planta (vestíbulo sobre la misma imagen del edificio) */
+    function getZoomPlanta(rutaImagen, titulo) {
+      if (rutaImagen === 'assets/edificio3.webp' && titulo === 'Vestíbulo')
+        return { origenX: '42%', origenY: '55%', escala: 2 };
+      if (rutaImagen === 'assets/edificio1.webp' && titulo === 'Vestíbulo/Pasillos')
+        return { origenX: '43%', origenY: '49%', escala: 2 };
+      return null;
+    }
+
+    function resetearZoomPlanta() {
+      mapaInteractivo.style.transition = '';
+      mapaInteractivo.style.transformOrigin = '';
+      mapaInteractivo.style.transform = '';
+    }
+
+    function aplicarZoomPlanta(origenX, origenY, escala, animar) {
+      mapaInteractivo.style.transformOrigin = origenX + ' ' + origenY;
+      if (animar) {
+        mapaInteractivo.style.transition = 'transform 2.2s ease-out';
+        mapaInteractivo.style.transform = 'scale(1)';
+        void mapaInteractivo.offsetWidth;
+        mapaInteractivo.style.transform = 'scale(' + escala + ')';
+      } else {
+        mapaInteractivo.style.transition = '';
+        mapaInteractivo.style.transform = 'scale(' + escala + ')';
+      }
+    }
+
+    function getMapaReferenciaRect() {
+      return mapaInteractivo.getBoundingClientRect();
+    }
+
+    mapImg.addEventListener('click', function (e) {
+      if (!herramientasCoordsActivas()) return;
+      const rect = getMapaReferenciaRect();
+      const left = ((e.clientX - rect.left) / rect.width  * 100).toFixed(2);
+      const top  = ((e.clientY - rect.top)  / rect.height * 100).toFixed(2);
+      alert('Coordenadas del clic:\n\nleft: ' + left + '%\ntop:  ' + top + '%');
+    });
+
+    /* ── Herramienta de coordenadas reutilizable ── */
+    function mostrarCoordenadas(e) {
+      if (!herramientasCoordsActivas()) return;
+      const rect = getMapaReferenciaRect();
+      const left = ((e.clientX - rect.left) / rect.width  * 100).toFixed(2);
+      const top  = ((e.clientY - rect.top)  / rect.height * 100).toFixed(2);
+      alert('Coordenadas del clic:\n\nleft: ' + left + '%\ntop:  ' + top + '%');
+    }
+
+    function puntoEnElipse(e, cx, cy, rx, ry) {
+      const rect = getMapaReferenciaRect();
+      const left = (e.clientX - rect.left) / rect.width * 100;
+      const top  = (e.clientY - rect.top)  / rect.height * 100;
+      const dx = (left - cx) / rx;
+      const dy = (top  - cy) / ry;
+      return dx * dx + dy * dy <= 1;
+    }
+
+    function clicExteriorConjunto(e) {
+      if (e.detail === 2) {
+        clearTimeout(clicExteriorConjunto._timer);
+        if (!puntoEnElipse(e, 64.82, 48.42, 20.96, 37.26)) {
+          volverAInicio();
+        }
+        return;
+      }
+      clearTimeout(clicExteriorConjunto._timer);
+      if (!herramientasCoordsActivas()) return;
+      clicExteriorConjunto._timer = setTimeout(function () {
+        mostrarCoordenadas(e);
+      }, 300);
+    }
+
+    function clicExteriorEdificios(e) {
+      if (e.detail === 2) {
+        clearTimeout(clicExteriorEdificios._timer);
+        if (!puntoEnElipse(e, 47.93, 49.52, 33.11, 41.69)) {
+          volverAEdificios();
+        }
+        return;
+      }
+      clearTimeout(clicExteriorEdificios._timer);
+      if (!herramientasCoordsActivas()) return;
+      clicExteriorEdificios._timer = setTimeout(function () {
+        mostrarCoordenadas(e);
+      }, 300);
+    }
+
+    /* ── Panel HUD ── */
+    const panelInfo = document.getElementById('panel-info');
+
+    function mostrarInfo(texto) {
+      panelInfo.innerText = texto;
+      panelInfo.style.opacity = '1';
+    }
+
+    function ocultarInfo() {
+      panelInfo.style.opacity = '0';
+    }
+
+    function apagarTodasLasCamaras() {
+      document.querySelectorAll('.camara-render, .camara-exterior, .camara-exterior-edificios, .camara-exterior-edificio1, .camara-exterior-edificio2, .camara-exterior-edificio3').forEach(function (cam) {
+        cam.style.display = 'none';
+      });
+    }
+
+    function esperarAnimacionImagen(nombreAnimacion, callback) {
+      function onEnd(e) {
+        if (e.target !== mapImg || e.animationName !== nombreAnimacion) return;
+        mapImg.removeEventListener('animationend', onEnd);
+        callback();
+      }
+      mapImg.addEventListener('animationend', onEnd);
+    }
+
+    function esperarTransicionContenedor(callback) {
+      function onEnd(e) {
+        if (e.target !== mapaInteractivo || e.propertyName !== 'transform') return;
+        mapaInteractivo.removeEventListener('transitionend', onEnd);
+        callback();
+      }
+      mapaInteractivo.addEventListener('transitionend', onEnd);
+    }
+
+    function esperarOverlayOculto(callback) {
+      function onEnd(e) {
+        if (e.target !== overlay || e.propertyName !== 'opacity') return;
+        if (parseFloat(getComputedStyle(overlay).opacity) > 0.01) return;
+        overlay.removeEventListener('transitionend', onEnd);
+        callback();
+      }
+      overlay.addEventListener('transitionend', onEnd);
+    }
+
+    /* ── Escena Exterior (Planta Conjunto) ── */
+    function irAEscenaExterior() {
+      ocultarInfo();
+      mostrarBtnRegresarPlanta(volverAInicio);
+
+      document.querySelectorAll('.botones-escena-1').forEach(function (btn) {
+        btn.style.display = 'none';
+      });
+
+      overlay.style.opacity = '1';
+
+      setTimeout(function () {
+        document.getElementById('titulo-principal').textContent = 'Exploración Exterior';
+
+        setTimeout(function () {
+          overlay.style.opacity = '0';
+          esperarOverlayOculto(function () {
+            document.querySelectorAll('.botones-escena-exterior, .camara-exterior').forEach(function (btn) {
+              btn.style.display = 'block';
+            });
+            mostrarBtnRegresarPlanta(volverAInicio);
+            activarCargaReactiva(IMAGEN_INICIAL, { selectorCamaras: '.camara-exterior' });
+          });
+        }, 300);
+      }, 300);
+    }
+
+    function volverAInicio() {
+      ocultarInfo();
+      apagarTodasLasCamaras();
+      ocultarBtnRegresarPlanta();
+
+      document.querySelectorAll('.botones-escena-exterior, .camara-exterior').forEach(function (btn) {
+        btn.style.display = 'none';
+      });
+
+      overlay.style.opacity = '1';
+
+      setTimeout(function () {
+        document.getElementById('titulo-principal').textContent = 'Exploración de Proyecto CICIP';
+
+        setTimeout(function () {
+          overlay.style.opacity = '0';
+          esperarOverlayOculto(function () {
+            document.querySelectorAll('.botones-escena-1').forEach(function (btn) {
+              btn.style.display = 'block';
+            });
+            activarCargaReactiva(IMAGEN_INICIAL);
+          });
+        }, 300);
+      }, 300);
+    }
+
+    /* ── Exterior de Edificios (Escena 2) ── */
+    function irAExteriorEdificios() {
+      ocultarInfo();
+      mostrarBtnRegresarPlanta(volverAEdificios);
+
+      document.querySelectorAll('.botones-escena-2').forEach(function (btn) {
+        btn.style.display = 'none';
+      });
+
+      overlay.style.opacity = '1';
+
+      setTimeout(function () {
+        document.getElementById('titulo-principal').textContent = 'Exterior de Edificios';
+
+        setTimeout(function () {
+          overlay.style.opacity = '0';
+          esperarOverlayOculto(function () {
+            document.querySelectorAll('.botones-exterior-edificios, .camara-exterior-edificios').forEach(function (btn) {
+              btn.style.display = 'block';
+            });
+            mostrarBtnRegresarPlanta(volverAEdificios);
+            activarCargaReactiva(imagenEscenaActual, { selectorCamaras: '.camara-exterior-edificios' });
+          });
+        }, 300);
+      }, 300);
+    }
+
+    function volverAEdificios() {
+      ocultarInfo();
+      apagarTodasLasCamaras();
+
+      document.querySelectorAll('.botones-exterior-edificios, .camara-exterior-edificios').forEach(function (btn) {
+        btn.style.display = 'none';
+      });
+
+      overlay.style.opacity = '1';
+
+      setTimeout(function () {
+        document.getElementById('titulo-principal').textContent = 'Vista de Edificios';
+
+        setTimeout(function () {
+          overlay.style.opacity = '0';
+          esperarOverlayOculto(function () {
+            document.querySelectorAll('.botones-escena-2').forEach(function (btn) {
+              btn.style.display = 'block';
+            });
+            mostrarBtnRegresarPlanta(volverAEscena1);
+            activarCargaReactiva(imagenEscenaActual);
+          });
+        }, 300);
+      }, 300);
+    }
+
+    /* ── Exterior por edificio (Escena 3 — misma imagen de planta) ── */
+    let edificioExteriorActivo = 0;
+
+    const EXTERIOR_EDIFICIO = {
+      1: { titulo: 'Exterior Edificio 1', botones: '.botones-exterior-edificio1', camaras: '.camara-exterior-edificio1', elipse: { cx: 45.47, cy: 52.73, rx: 36.42, ry: 43.21 } },
+      2: { titulo: 'Exterior Edificio 2', botones: '.botones-exterior-edificio2', camaras: '.camara-exterior-edificio2', elipse: { cx: 48.36, cy: 50.09, rx: 35.12, ry: 45.37 } },
+      3: { titulo: 'Exterior Edificio 3', botones: '.botones-exterior-edificio3', camaras: '.camara-exterior-edificio3', elipse: { cx: 46.11, cy: 51.68, rx: 37.73, ry: 44.18 } }
+    };
+
+    function mostrarBotonesEscena3() {
+      document.querySelectorAll('.botones-escena-3').forEach(function (btn) {
+        btn.style.display = 'block';
+      });
+      ['zonas-edificio-1', 'zonas-edificio-2', 'zonas-edificio-3'].forEach(function (cls) {
+        document.querySelectorAll('.' + cls).forEach(function (el) {
+          el.style.display = (cls === e3Zonas) ? 'block' : 'none';
+        });
+      });
+      instalarHotspotsMovilEdificios();
+    }
+
+    function ocultarModoExteriorEdificio() {
+      if (!edificioExteriorActivo) return;
+      var cfg = EXTERIOR_EDIFICIO[edificioExteriorActivo];
+      document.querySelectorAll(cfg.botones + ', ' + cfg.camaras).forEach(function (el) {
+        el.style.display = 'none';
+      });
+      edificioExteriorActivo = 0;
+    }
+
+    function irAExteriorEdificio(n) {
+      ocultarInfo();
+      mostrarBtnRegresarPlanta(volverAPlantaEdificio);
+      edificioExteriorActivo = n;
+      var cfg = EXTERIOR_EDIFICIO[n];
+
+      document.querySelectorAll('.botones-escena-3').forEach(function (btn) {
+        btn.style.display = 'none';
+      });
+
+      overlay.style.opacity = '1';
+
+      setTimeout(function () {
+        document.getElementById('titulo-principal').textContent = cfg.titulo;
+
+        setTimeout(function () {
+          overlay.style.opacity = '0';
+          esperarOverlayOculto(function () {
+            document.querySelectorAll(cfg.botones + ', ' + cfg.camaras).forEach(function (el) {
+              el.style.display = 'block';
+            });
+            mostrarBtnRegresarPlanta(volverAPlantaEdificio);
+            activarCargaReactiva(imagenEscenaActual, { selectorCamaras: cfg.camaras });
+          });
+        }, 300);
+      }, 300);
+    }
+
+    function volverAPlantaEdificio() {
+      if (!edificioExteriorActivo) return;
+      ocultarInfo();
+      apagarTodasLasCamaras();
+      var cfg = EXTERIOR_EDIFICIO[edificioExteriorActivo];
+
+      document.querySelectorAll(cfg.botones + ', ' + cfg.camaras).forEach(function (el) {
+        el.style.display = 'none';
+      });
+
+      overlay.style.opacity = '1';
+
+      setTimeout(function () {
+        document.getElementById('titulo-principal').textContent = e3Titulo;
+
+        setTimeout(function () {
+          overlay.style.opacity = '0';
+          esperarOverlayOculto(function () {
+            mostrarBotonesEscena3();
+            mostrarBtnRegresarPlanta(volverAEscena2);
+            edificioExteriorActivo = 0;
+          });
+        }, 300);
+      }, 300);
+    }
+
+    function clicExteriorEdificio(n, e) {
+      var cfg = EXTERIOR_EDIFICIO[n];
+      var el = cfg.elipse;
+      if (e.detail === 2) {
+        clearTimeout(clicExteriorEdificio['_timer' + n]);
+        if (!puntoEnElipse(e, el.cx, el.cy, el.rx, el.ry)) {
+          volverAPlantaEdificio();
+        }
+        return;
+      }
+      clearTimeout(clicExteriorEdificio['_timer' + n]);
+      if (!herramientasCoordsActivas()) return;
+      clicExteriorEdificio['_timer' + n] = setTimeout(function () {
+        mostrarCoordenadas(e);
+      }, 300);
+    }
+
+    /* ── Navegación entre escenas ── */
+    function irAEscena2() {
+      // Fijar punto de fuga hacia el centro del círculo rojo
+      mapImg.style.transformOrigin = '64.82% 48.42%';
+
+      ocultarInfo();
+      apagarTodasLasCamaras();
+      mostrarBtnRegresarPlanta(volverAEscena1);
+
+      // Ocultar botones de escena 1 de inmediato
+      document.querySelectorAll('.botones-escena-1').forEach(function (btn) {
+        btn.style.display = 'none';
+      });
+
+      // a) Arrancar zoom de salida — el usuario lo ve libremente
+      mapImg.classList.add('animacion-salir');
+
+      // b) Tras 900 ms (zoom visible): cortina + esperar imagen antes de cambiar
+      setTimeout(function () {
+        activarCortinaCarga();
+
+        asignarImagenPrincipal('assets/planta-edificios.webp').then(function () {
+          document.getElementById('titulo-principal').textContent = 'Vista de Edificios';
+          mapImg.classList.remove('animacion-salir');
+          void mapImg.offsetWidth;
+          mapImg.classList.add('animacion-entrar');
+          activarCargaReactiva(imagenEscenaActual);
+          retirarCortinaCarga(350);
+
+          esperarAnimacionImagen('zoom-entrar', function () {
+            document.querySelectorAll('.botones-escena-2').forEach(function (btn) {
+              btn.style.display = 'block';
+            });
+            mostrarBtnRegresarPlanta(volverAEscena1);
+          });
+        });
+      }, 900);
+    }
+
+    /* ── Visor de renders estilo Street View ── */
+    function abrirRender(rutaImagen, elementoCamara, nombreEspacio) {
+      nombreEspacio = nombreEspacio || '';
+      const visor = document.getElementById('visor-pantalla-completa');
+      const imagenActiva = document.getElementById('imagen-render-activa');
+      const spinnerRender = document.getElementById('spinner-render');
+      const mapContainer = document.querySelector('.map-container');
+      const etiqueta = document.getElementById('etiqueta-visor-render');
+
+      if (nombreEspacio) {
+        etiqueta.textContent = 'VISTA 3D | ' + nombreEspacio;
+        etiqueta.style.display = 'block';
+      } else {
+        etiqueta.style.display = 'none';
+      }
+
+      document.querySelectorAll('.camara-render').forEach(function (c) {
+        c.classList.remove('camara-activa');
+      });
+      if (elementoCamara) elementoCamara.classList.add('camara-activa');
+
+      imagenActiva.style.opacity = '0';
+      spinnerRender.style.display = 'block';
+      imagenActiva.onload = function () {
+        spinnerRender.style.display = 'none';
+        imagenActiva.style.opacity = '1';
+      };
+      imagenActiva.src = rutaImagen;
+      if (imagenActiva.complete) {
+        imagenActiva.onload();
+      }
+
+      visor.style.display = 'block';
+      document.body.classList.add('render-activo');
+      cerrarMapaOverlay();
+    }
+
+    function cerrarRender() {
+      const visor = document.getElementById('visor-pantalla-completa');
+
+      document.getElementById('spinner-render').style.display = 'none';
+      document.getElementById('imagen-render-activa').style.opacity = '0';
+      document.body.classList.remove('render-activo');
+      cerrarMapaOverlay();
+      document.querySelectorAll('.camara-render').forEach(function (c) {
+        c.classList.remove('camara-activa');
+      });
+
+      setTimeout(function () { visor.style.display = 'none'; }, 400);
+    }
+
+    function abrirMapaOverlay() {
+      document.body.classList.add('mapa-desplegado');
+    }
+
+    function cerrarMapaOverlay() {
+      document.body.classList.remove('mapa-desplegado');
+      ocultarHotspotTooltip();
+    }
+
+    function toggleMapaOverlay() {
+      document.body.classList.toggle('mapa-desplegado');
+      if (!document.body.classList.contains('mapa-desplegado')) {
+        ocultarHotspotTooltip();
+      }
+    }
+
+    function esVistaMovil() {
+      return window.matchMedia('only screen and (max-width: 900px)').matches;
+    }
+
+    function toggleMenuMovil() {
+      if (!esVistaMovil()) return;
+      var panel = document.getElementById('contenedor-encabezado');
+      var abierto = panel.classList.toggle('menu-abierto');
+      document.body.classList.toggle('menu-abierto', abierto);
+      document.getElementById('btn-menu-movil').textContent = abierto ? '✕' : '☰';
+    }
+
+    function cerrarMenuMovil() {
+      if (!esVistaMovil()) return;
+      document.getElementById('contenedor-encabezado').classList.remove('menu-abierto');
+      document.body.classList.remove('menu-abierto');
+      document.getElementById('btn-menu-movil').textContent = '☰';
+    }
+
+    function centroZonaEdificio(zona) {
+      var style = zona.getAttribute('style') || '';
+      var ellipse = style.match(/clip-path:ellipse\([^)]+\s+at\s+([\d.]+)%\s+([\d.]+)%\)/);
+      if (ellipse) {
+        return { x: parseFloat(ellipse[1]), y: parseFloat(ellipse[2]) };
+      }
+      var polygon = style.match(/clip-path:polygon\(([^)]+)\)/);
+      if (polygon) {
+        var puntos = polygon[1].split(',').map(function (segmento) {
+          var partes = segmento.trim().split(/\s+/);
+          return { x: parseFloat(partes[0]), y: parseFloat(partes[1]) };
+        });
+        var sumX = 0;
+        var sumY = 0;
+        puntos.forEach(function (p) {
+          sumX += p.x;
+          sumY += p.y;
+        });
+        return { x: sumX / puntos.length, y: sumY / puntos.length };
+      }
+      var onclick = zona.getAttribute('onclick') || '';
+      var coords = onclick.match(/irAEscena4\([^,]+,\s*'[^']*',\s*'([^']+)',\s*'([^']+)'/);
+      if (coords) {
+        return { x: parseFloat(coords[1]), y: parseFloat(coords[2]) };
+      }
+      return { x: 50, y: 50 };
+    }
+
+    function nombreZonaEdificio(zona) {
+      var enter = zona.getAttribute('onmouseenter') || '';
+      var coincidencia = enter.match(/mostrarInfo\('([^']+)'\)/);
+      return coincidencia ? coincidencia[1] : '';
+    }
+
+    var hotspotActivo = null;
+
+    function ocultarHotspotTooltip() {
+      var tooltip = document.getElementById('hotspot-tooltip-movil');
+      if (tooltip) {
+        tooltip.classList.remove('visible');
+        tooltip.textContent = '';
+      }
+      if (hotspotActivo) {
+        hotspotActivo.classList.remove('activo');
+        hotspotActivo = null;
+      }
+    }
+
+    function mostrarHotspotTooltip(hotspot, nombre) {
+      if (!esVistaMovil()) return;
+      var tooltip = document.getElementById('hotspot-tooltip-movil');
+      if (!tooltip) return;
+      if (hotspotActivo && hotspotActivo !== hotspot) {
+        hotspotActivo.classList.remove('activo');
+      }
+      hotspotActivo = hotspot;
+      hotspot.classList.add('activo');
+      tooltip.textContent = nombre;
+      var rect = hotspot.getBoundingClientRect();
+      tooltip.style.left = Math.min(rect.left, window.innerWidth - 230) + 'px';
+      tooltip.style.top = (rect.top - 8) + 'px';
+      tooltip.style.transform = 'translateY(-100%)';
+      tooltip.classList.add('visible');
+    }
+
+    function instalarHotspotsMovilEdificios() {
+      document.querySelectorAll('.botones-escena-3.zona-interactiva[class*="zonas-edificio-"]').forEach(function (zona) {
+        if (zona.querySelector('.hotspot-zona-movil')) return;
+        var nombre = nombreZonaEdificio(zona);
+        if (!nombre) return;
+        var centro = centroZonaEdificio(zona);
+        var hotspot = document.createElement('button');
+        hotspot.type = 'button';
+        hotspot.className = 'hotspot-zona-movil';
+        hotspot.setAttribute('aria-label', nombre);
+        hotspot.style.left = centro.x + '%';
+        hotspot.style.top = centro.y + '%';
+        hotspot.addEventListener('click', function (e) {
+          e.stopPropagation();
+          if (!esVistaMovil()) return;
+          mostrarHotspotTooltip(hotspot, nombre);
+        });
+        zona.appendChild(hotspot);
+      });
+    }
+
+    function actualizarModoDispositivo() {
+      if (!esVistaMovil()) {
+        cerrarMapaOverlay();
+        cerrarMenuMovil();
+        ocultarHotspotTooltip();
+      }
+    }
+
+    function irAEscena3(rutaImagen, nuevoTitulo, origenX, origenY, claseZonas) {
+      cerrarRender();
+      resetearZoomPlanta();
+
+      // Guardar estado para poder regresar desde escena 4
+      e3Imagen = rutaImagen;
+      e3Titulo = nuevoTitulo;
+      e3Zonas  = claseZonas;
+
+      // PRIMERA línea: fijar el punto de fuga antes de cualquier animación
+      document.getElementById('mapa-principal').style.transformOrigin = origenX + ' ' + origenY;
+
+      ocultarInfo();
+      apagarTodasLasCamaras();
+      mostrarBtnRegresarPlanta(volverAEscena2);
+
+      // Ocultar botones de escena 2 de inmediato
+      document.querySelectorAll('.botones-escena-2').forEach(function (btn) {
+        btn.style.display = 'none';
+      });
+
+      // a) Arrancar zoom de salida — el usuario lo ve libremente
+      mapImg.classList.remove('animacion-salir', 'animacion-entrar', 'animacion-salir-e3', 'animacion-entrar-e3', 'animacion-entrar-regreso-e3');
+      void mapImg.offsetWidth;
+      mapImg.classList.add('animacion-salir-e3');
+
+      // b) Tras 1400 ms (zoom visible): cortina + esperar imagen antes de cambiar
+      setTimeout(function () {
+        activarCortinaCarga();
+
+        asignarImagenPrincipal(rutaImagen).then(function () {
+          document.getElementById('titulo-principal').textContent = nuevoTitulo;
+          mapImg.classList.remove('animacion-salir-e3');
+          void mapImg.offsetWidth;
+          mapImg.classList.add('animacion-entrar-e3');
+          activarCargaReactiva(imagenEscenaActual, { claseZonas: claseZonas });
+          retirarCortinaCarga(400);
+
+          esperarAnimacionImagen('zoom-entrar-escena3', function () {
+            mostrarBotonesEscena3();
+            mostrarBtnRegresarPlanta(volverAEscena2);
+          });
+        });
+      }, 1400);
+    }
+
+    function volverAEscena2() {
+      ocultarInfo();
+      apagarTodasLasCamaras();
+      resetearZoomPlanta();
+      ocultarModoExteriorEdificio();
+      // Ocultar botones de escena 3 de inmediato
+      document.querySelectorAll('.botones-escena-3').forEach(function (btn) {
+        btn.style.display = 'none';
+      });
+
+      // Resetear transform-origin para que el zoom de regreso quede centrado
+      mapImg.style.transformOrigin = '50% 50%';
+
+      activarCortinaCarga();
+
+      asignarImagenPrincipal('assets/planta-edificios.webp').then(function () {
+        document.getElementById('titulo-principal').textContent = 'Vista de Edificios';
+        mapImg.classList.remove('animacion-salir', 'animacion-entrar', 'animacion-salir-e3', 'animacion-entrar-e3', 'animacion-entrar-regreso-e3');
+        void mapImg.offsetWidth;
+        mapImg.classList.add('animacion-entrar');
+        activarCargaReactiva(imagenEscenaActual);
+        retirarCortinaCarga(350);
+
+        esperarAnimacionImagen('zoom-entrar', function () {
+          document.querySelectorAll('.botones-escena-2').forEach(function (btn) {
+            btn.style.display = 'block';
+          });
+          mostrarBtnRegresarPlanta(volverAEscena1);
+        });
+      });
+    }
+
+    function volverAEscena1() {
+      ocultarInfo();
+      apagarTodasLasCamaras();
+      ocultarBtnRegresarPlanta();
+
+      // Ocultar botones de escena 2 de inmediato
+      document.querySelectorAll('.botones-escena-2').forEach(function (btn) {
+        btn.style.display = 'none';
+      });
+
+      activarCortinaCarga();
+
+      asignarImagenPrincipal(IMAGEN_INICIAL).then(function () {
+        document.getElementById('titulo-principal').textContent = 'Exploración de Proyecto CICIP';
+        mapImg.classList.remove('animacion-salir', 'animacion-entrar');
+        void mapImg.offsetWidth;
+        mapImg.classList.add('animacion-entrar');
+        activarCargaReactiva(imagenEscenaActual);
+        retirarCortinaCarga(350);
+
+        esperarAnimacionImagen('zoom-entrar', function () {
+          document.querySelectorAll('.botones-escena-1').forEach(function (btn) {
+            btn.style.display = 'block';
+          });
+        });
+      });
+    }
+
+    /* ── Estado de Escena 3 para poder regresar correctamente ── */
+    let e3Imagen  = '';
+    let e3Titulo  = '';
+    let e3Zonas   = '';
+
+    /* ── Salto lateral entre cuartos (sin volver al mapa) ── */
+    /* Oculta todos los nav-escena-4 y flechas, luego muestra los IDs indicados */
+    function mostrarNavs(ids) {
+      document.querySelectorAll('.nav-escena-4, .flecha-salto-planta, .camara-render').forEach(function (el) {
+        el.style.display = 'none';
+      });
+      if (ids) {
+        ids.trim().split(/\s+/).forEach(function (id) {
+          var el = document.getElementById(id);
+          if (!el) return;
+          el.style.display = el.classList.contains('flecha-salto-planta') ? 'flex' : 'block';
+        });
+      }
+    }
+
+    function saltoLateral(rutaImagen, nuevoTitulo, flechaOcultar, flechaMostrar, rutaImagen2) {
+      cerrarRender();
+      ocultarInfo();
+      apagarTodasLasCamaras();
+      mostrarBtnRegresarPlanta(volverAEscena3);
+      document.querySelectorAll('.nav-escena-4, .flecha-salto-planta').forEach(function (el) {
+        el.style.display = 'none';
+      });
+      mapImg.style.transform = '';
+      const zoomPlanta = getZoomPlanta(rutaImagen, nuevoTitulo);
+      if (!zoomPlanta) resetearZoomPlanta();
+      activarCortinaCarga();
+
+      Promise.all([
+        asignarImagenPrincipal(rutaImagen),
+        asignarImagenSecundaria(rutaImagen2 || null)
+      ]).then(function () {
+        document.getElementById('titulo-principal').textContent = nuevoTitulo;
+        mapImg.classList.remove('animacion-salir', 'animacion-entrar', 'animacion-salir-e3', 'animacion-entrar-e3', 'animacion-entrar-regreso-e3');
+        void mapImg.offsetWidth;
+
+        function activarNavsYCamaras() {
+          mostrarNavs(flechaMostrar);
+          mostrarBtnRegresarPlanta(volverAEscena3);
+          activarCargaReactiva(imagenEscenaActual, {
+            navIds: flechaMostrar,
+            selectorCamaras: '.camara-render'
+          });
+        }
+
+        if (zoomPlanta) {
+          mapImg.style.transform = '';
+          aplicarZoomPlanta(zoomPlanta.origenX, zoomPlanta.origenY, zoomPlanta.escala, true);
+          retirarCortinaCarga(300);
+          esperarTransicionContenedor(activarNavsYCamaras);
+        } else {
+          mapImg.classList.add('animacion-entrar-e3');
+          retirarCortinaCarga(300);
+          esperarAnimacionImagen('zoom-entrar-escena3', activarNavsYCamaras);
+        }
+      });
+    }
+
+    /* ── Ir a Escena 4 (espacio interior) ── */
+
+    function irAEscena4(rutaImagen, nuevoTitulo, origenX, origenY, rutaImagen2, escalaFija, flechaMostrar) {
+      ocultarInfo();
+      apagarTodasLasCamaras();
+      mostrarBtnRegresarPlanta(volverAEscena3);
+      ocultarModoExteriorEdificio();
+      document.querySelectorAll('.nav-escena-4, .flecha-salto-planta').forEach(function (el) {
+        el.style.display = 'none';
+      });
+
+      document.getElementById('mapa-principal').style.transformOrigin = origenX + ' ' + origenY;
+
+      // Ocultar zonas del edificio actual y catch-all de escena 3
+      document.querySelectorAll('.botones-escena-3').forEach(function (btn) {
+        btn.style.display = 'none';
+      });
+
+      // a) Arrancar zoom de salida
+      mapImg.classList.remove('animacion-salir', 'animacion-entrar', 'animacion-salir-e3', 'animacion-entrar-e3', 'animacion-entrar-regreso-e3');
+      void mapImg.offsetWidth;
+      mapImg.classList.add('animacion-salir-e3');
+
+      // b) Tras 1400 ms: cortina + esperar imagen(es) antes de cambiar
+      setTimeout(function () {
+        activarCortinaCarga();
+
+        Promise.all([
+          asignarImagenPrincipal(rutaImagen),
+          asignarImagenSecundaria(rutaImagen2 || null)
+        ]).then(function () {
+          document.getElementById('titulo-principal').textContent = nuevoTitulo;
+          mapImg.classList.remove('animacion-salir-e3');
+          mapImg.style.transform = '';
+          void mapImg.offsetWidth;
+
+          function activarEscena4() {
+            if (herramientasCoordsActivas()) {
+              document.querySelectorAll('.botones-escena-4').forEach(function (btn) {
+                btn.style.display = 'block';
+              });
+            }
+            mostrarNavs(flechaMostrar || '');
+            mostrarBtnRegresarPlanta(volverAEscena3);
+            activarCargaReactiva(imagenEscenaActual, {
+              navIds: flechaMostrar,
+              selectorCamaras: '.camara-render'
+            });
+          }
+
+          if (escalaFija) {
+            resetearZoomPlanta();
+            aplicarZoomPlanta(origenX, origenY, escalaFija, true);
+            retirarCortinaCarga(400);
+            esperarTransicionContenedor(activarEscena4);
+          } else {
+            resetearZoomPlanta();
+            mapImg.classList.add('animacion-entrar-e3');
+            retirarCortinaCarga(400);
+            esperarAnimacionImagen('zoom-entrar-escena3', activarEscena4);
+          }
+        });
+      }, 1400);
+    }
+
+    /* ── Volver a Escena 3 (planta del edificio) ── */
+    function volverAEscena3() {
+      ocultarInfo();
+      apagarTodasLasCamaras();
+
+      // Ocultar todas las flechas y polígonos de navegación lateral
+      document.querySelectorAll('.nav-escena-4').forEach(function (f) {
+        f.style.display = 'none';
+      });
+
+      // Resetear zoom de planta (vestíbulo) si estaba aplicado
+      resetearZoomPlanta();
+      mapImg.style.transform = '';
+
+      // Ocultar imagen secundaria si estaba visible
+      mapaSecundario.style.display = 'none';
+      mapaSecundario.src = '';
+      mapaInteractivo.classList.remove('mapa-dual');
+
+      // Ocultar botones de escena 4
+      document.querySelectorAll('.botones-escena-4').forEach(function (btn) {
+        btn.style.display = 'none';
+      });
+
+      mapImg.style.transformOrigin = '50% 50%';
+      activarCortinaCarga();
+
+      asignarImagenPrincipal(e3Imagen).then(function () {
+        document.getElementById('titulo-principal').textContent = e3Titulo;
+        mapImg.classList.remove('animacion-salir', 'animacion-entrar', 'animacion-salir-e3', 'animacion-entrar-e3', 'animacion-entrar-regreso-e3');
+        void mapImg.offsetWidth;
+        mapImg.classList.add('animacion-entrar');
+        activarCargaReactiva(imagenEscenaActual, { claseZonas: e3Zonas });
+        retirarCortinaCarga(350);
+
+        esperarAnimacionImagen('zoom-entrar', function () {
+          mostrarBotonesEscena3();
+          mostrarBtnRegresarPlanta(volverAEscena2);
+        });
+      });
+    }
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        navegarAtras();
+      }
+    });
+
+    document.addEventListener('click', function (e) {
+      if (!esVistaMovil()) return;
+      if (!e.target.closest('.hotspot-zona-movil, #hotspot-tooltip-movil')) {
+        ocultarHotspotTooltip();
+      }
+    });
+
+    function requiereRotacionCelular() {
+      if (!esVistaMovil()) return false;
+      return window.matchMedia('(orientation: portrait)').matches;
+    }
+
+    function actualizarBloqueoRotacion() {
+      var bloqueo = document.getElementById('bloqueo-rotacion');
+      if (!bloqueo) return;
+      bloqueo.classList.toggle('activo', requiereRotacionCelular());
+    }
+
+    function actualizarInterfazDispositivo() {
+      actualizarModoDispositivo();
+      actualizarBloqueoRotacion();
+    }
+
+    instalarHotspotsMovilEdificios();
+    actualizarInterfazDispositivo();
+    window.addEventListener('resize', actualizarInterfazDispositivo);
+    window.addEventListener('orientationchange', actualizarInterfazDispositivo);
+  </script>
+
+  <!-- ══════════════════════════════════════════
+       MODO EDITOR DE POLÍGONOS (herramienta dev)
+       ══════════════════════════════════════════ -->
+
+  <!-- Canvas de dibujo (cubre toda la ventana) -->
+  <canvas id="editor-canvas" style="
+    display:none;
+    position:fixed;
+    top:0; left:0;
+    z-index:999;
+    pointer-events:none;
+  "></canvas>
+
+  <!-- Panel flotante de estado -->
+  <div id="editor-panel" style="
+    display:none;
+    position:fixed;
+    top:12px; left:50%;
+    transform:translateX(-50%);
+    background:rgba(0,0,0,0.92);
+    color:#fff;
+    padding:10px 18px;
+    border-radius:8px;
+    font:bold 13px monospace;
+    z-index:1000;
+    border:1px solid #444;
+    min-width:340px;
+    text-align:center;
+    letter-spacing:0.03em;
+  ">
+    🟢 MODO EDITOR — <span id="editor-contador">0 puntos</span><br>
+    <span style="font-weight:normal; font-size:11px;">
+      Clic izq: punto &nbsp;|&nbsp; C / N: nuevo &nbsp;|&nbsp; E: salir
+    </span><br>
+    <button onclick="cerrarPoligono()"
+      style="margin-top:6px; background:#333; color:#0ff; border:1px solid #0ff;
+             border-radius:4px; padding:4px 14px; font:bold 11px monospace; cursor:pointer;">
+      ✔ Cerrar polígono
+    </button>
+    &nbsp;
+    <button onclick="limpiarEditor()"
+      style="margin-top:6px; background:#333; color:#f88; border:1px solid #f88;
+             border-radius:4px; padding:4px 14px; font:bold 11px monospace; cursor:pointer;">
+      ✖ Limpiar
+    </button>
+    <div id="editor-resultado" style="display:none; margin-top:8px;">
+      <input id="editor-output" type="text" readonly
+        style="width:100%; background:#111; color:#0ff; border:1px solid #0ff;
+               border-radius:4px; padding:5px 8px; font:12px monospace;
+               cursor:text; box-sizing:border-box;"
+        onclick="this.select()">
+      <button onclick="copiarPoligono()"
+        style="margin-top:6px; width:100%; background:#0ff; color:#000;
+               border:none; border-radius:4px; padding:5px 0; font:bold 12px monospace;
+               cursor:pointer;">
+        📋 Copiar al portapapeles
+      </button>
+      <button onclick="nuevoPoligono()"
+        style="margin-top:6px; width:100%; background:#333; color:#ff0; border:1px solid #ff0;
+               border-radius:4px; padding:5px 0; font:bold 12px monospace; cursor:pointer;">
+        ↺ Nuevo polígono
+      </button>
+      <span id="editor-copiado" style="display:none; color:#0f0; font-size:11px; margin-top:4px; display:block;">&#x200B;</span>
+    </div>
+  </div>
+
+  <!-- Botón de toggle (esquina superior izquierda) -->
+  <button id="btn-editor" onclick="toggleEditor()" style="
+    position:fixed;
+    top:12px; left:12px;
+    background:rgba(30,30,30,0.9);
+    color:#aaa;
+    border:1px solid #555;
+    border-radius:6px;
+    padding:6px 12px;
+    font:12px monospace;
+    cursor:pointer;
+    z-index:1000;
+  ">🔒 Editor</button>
+
+  <script>
+    /* ══ MODO EDITOR DE POLÍGONOS ══ */
+    let editorActivo = false;
+    let puntosEditor = [];
+    let poligonoCerrado = false;
+
+    const editorCanvas  = document.getElementById('editor-canvas');
+    const editorPanel   = document.getElementById('editor-panel');
+    const editorContador = document.getElementById('editor-contador');
+    const btnEditor     = document.getElementById('btn-editor');
+    const mapContainer  = document.querySelector('.map-container');
+    let ctx;
+
+    function toggleEditor() {
+      if (typeof editorPoligonosActivo === 'function' && !editorPoligonosActivo()) {
+        console.log('%c🔒 Editor bloqueado — HERRAMIENTAS_DEV.editorPoligonos = true', 'color:#888');
+        return;
+      }
+      editorActivo = !editorActivo;
+
+      if (editorActivo) {
+        // Canvas cubre toda la ventana
+        editorCanvas.width  = window.innerWidth;
+        editorCanvas.height = window.innerHeight;
+        editorCanvas.style.width  = window.innerWidth  + 'px';
+        editorCanvas.style.height = window.innerHeight + 'px';
+        editorCanvas.style.display = 'block';
+        editorCanvas.style.pointerEvents = 'auto';
+        editorCanvas.style.cursor = 'crosshair';
+        ctx = editorCanvas.getContext('2d');
+        editorPanel.style.display = 'block';
+        btnEditor.style.color = '#0f0';
+        btnEditor.style.borderColor = '#0f0';
+        editorCanvas.addEventListener('click',      onEditorClick);
+        editorCanvas.addEventListener('dblclick',   onEditorDblClick);
+        editorCanvas.addEventListener('contextmenu', onEditorCerrar);
+        console.log('%c✏️  Modo Editor ACTIVO', 'color:lime;font-weight:bold');
+      } else {
+        editorCanvas.style.display = 'none';
+        editorCanvas.style.pointerEvents = 'none';
+        editorPanel.style.display = 'none';
+        btnEditor.style.color = '#aaa';
+        btnEditor.style.borderColor = '#555';
+        editorCanvas.removeEventListener('click',      onEditorClick);
+        editorCanvas.removeEventListener('dblclick',   onEditorDblClick);
+        editorCanvas.removeEventListener('contextmenu', onEditorCerrar);
+        limpiarEditor();
+        console.log('%c✏️  Modo Editor DESACTIVADO', 'color:gray');
+      }
+    }
+
+    /* Cuando hay 2 imágenes apiladas, los nav usan % del contenedor completo */
+    function getEditorRefRect() {
+      return mapaInteractivo.getBoundingClientRect();
+    }
+
+    function onEditorClick(e) {
+      e.preventDefault();
+      if (poligonoCerrado) nuevoPoligono();
+      // Porcentajes relativos al contenedor (o imagen única si no hay segunda)
+      const refRect = getEditorRefRect();
+      const relX = e.clientX - refRect.left;
+      const relY = e.clientY - refRect.top;
+      const left = (relX / refRect.width  * 100).toFixed(2);
+      const top  = (relY / refRect.height * 100).toFixed(2);
+      // Posición en pantalla para dibujar (coordenadas del canvas full-window)
+      puntosEditor.push({ px: e.clientX, py: e.clientY, left, top });
+      editorContador.textContent = puntosEditor.length + ' punto' + (puntosEditor.length !== 1 ? 's' : '');
+      dibujarEditor();
+    }
+
+    function mostrarResultadoEditor(resultado) {
+      const divRes = document.getElementById('editor-resultado');
+      const input  = document.getElementById('editor-output');
+      const aviso  = document.getElementById('editor-copiado');
+      input.value = resultado;
+      divRes.style.display = 'block';
+      aviso.textContent = '';
+      setTimeout(function() { input.select(); }, 50);
+    }
+
+    function copiarPoligono() {
+      const input = document.getElementById('editor-output');
+      const aviso = document.getElementById('editor-copiado');
+      input.select();
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(input.value).then(function() {
+          aviso.textContent = '✔ ¡Copiado!';
+        }).catch(function() {
+          aviso.textContent = 'Selecciona el texto manualmente';
+        });
+      } else {
+        try {
+          document.execCommand('copy');
+          aviso.textContent = '✔ ¡Copiado!';
+        } catch(err) {
+          aviso.textContent = 'Selecciona el texto manualmente';
+        }
+      }
+    }
+
+    function onEditorDblClick(e) {
+      e.preventDefault();
+      cerrarPoligono();
+    }
+
+    function onEditorCerrar(e) {
+      e.preventDefault();
+      cerrarPoligono();
+    }
+
+    function cerrarPoligono() {
+      if (puntosEditor.length < 3) {
+        document.getElementById('editor-contador').textContent = '⚠ Necesitas al menos 3 puntos';
+        return;
+      }
+      const poligono = puntosEditor
+        .map(function(p) { return p.left + '% ' + p.top + '%'; })
+        .join(', ');
+      const resultado = 'clip-path: polygon(' + poligono + ');';
+      poligonoCerrado = true;
+      mostrarResultadoEditor(resultado);
+    }
+
+    function nuevoPoligono() {
+      puntosEditor = [];
+      poligonoCerrado = false;
+      if (ctx) ctx.clearRect(0, 0, editorCanvas.width, editorCanvas.height);
+      if (editorContador) editorContador.textContent = '0 puntos';
+      const divRes = document.getElementById('editor-resultado');
+      const input  = document.getElementById('editor-output');
+      const aviso  = document.getElementById('editor-copiado');
+      if (divRes) divRes.style.display = 'none';
+      if (input) input.value = '';
+      if (aviso) aviso.textContent = '';
+    }
+
+    function limpiarEditor() {
+      nuevoPoligono();
+    }
+
+    function dibujarEditor() {
+      ctx.clearRect(0, 0, editorCanvas.width, editorCanvas.height);
+
+      // Relleno del polígono en construcción
+      if (puntosEditor.length >= 3) {
+        ctx.beginPath();
+        ctx.moveTo(puntosEditor[0].px, puntosEditor[0].py);
+        puntosEditor.forEach(function(p) { ctx.lineTo(p.px, p.py); });
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(255,255,0,0.15)';
+        ctx.fill();
+      }
+
+      // Líneas de conexión
+      if (puntosEditor.length >= 2) {
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(255,80,80,0.9)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 3]);
+        ctx.moveTo(puntosEditor[0].px, puntosEditor[0].py);
+        puntosEditor.forEach(function(p) { ctx.lineTo(p.px, p.py); });
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      // Puntos y etiquetas
+      puntosEditor.forEach(function(p, i) {
+        ctx.beginPath();
+        ctx.fillStyle = '#ff4444';
+        ctx.arc(p.px, p.py, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 11px monospace';
+        ctx.fillText(i + 1, p.px + 8, p.py - 4);
+      });
+    }
+
+    // Tecla E: toggle editor | C / N: nuevo polígono
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'e' || e.key === 'E') {
+        if (typeof editorPoligonosActivo === 'function' && !editorPoligonosActivo()) return;
+        toggleEditor();
+      }
+      if (editorActivo && (e.key === 'c' || e.key === 'C' || e.key === 'n' || e.key === 'N')) {
+        nuevoPoligono();
+      }
+    });
+
+    // Re-ajustar canvas si la ventana cambia de tamaño
+    window.addEventListener('resize', function() {
+      if (!editorActivo) return;
+      editorCanvas.width  = window.innerWidth;
+      editorCanvas.height = window.innerHeight;
+      editorCanvas.style.width  = window.innerWidth  + 'px';
+      editorCanvas.style.height = window.innerHeight + 'px';
+      dibujarEditor();
+    });
+
+    aplicarCandadoHerramientasDev();
+  </script>
+
+  <script src="navs.js"></script>
+  <script src="cameras.js"></script>
+  <script>
+    iniciarCargaInicial();
+  </script>
+</body>
+</html>
+

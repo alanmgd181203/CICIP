@@ -1,0 +1,26 @@
+{
+  "name": "Proyecto CICIP | Recorrido Virtual",
+  "short_name": "CICIP",
+  "description": "Exploración interactiva del proyecto arquitectónico CICIP.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "assets/imagen-portada.webp",
+      "sizes": "512x512",
+      "type": "image/webp",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/imagen-portada.webp",
+      "sizes": "512x512",
+      "type": "image/webp",
+      "purpose": "maskable"
+    }
+  ]
+}
